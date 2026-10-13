@@ -21,11 +21,13 @@ pixel-free model can be pushed on both.
 1. **One model for both viewpoints.** A single model trained on worn-camera and observer-camera trajectories together,
    with and without a domain token (one extra input that tells the model which kind of camera a trajectory comes
    from), compared with the two released single-viewpoint models.
-2. **A harder training quiz for procedural activities.** The model learns by matching a camera motion to the right
-   description among wrong ones. In training, the wrong ones come from random other videos, so they are easy to rule
-   out (a cooking clip against a basketball caption). In the test, the wrong ones come from the same recording (in the
-   same kitchen, "cracks an egg" against "stirs the pan"), which is much harder. We train on wrong answers from the
-   same recording too, so that training matches the test, and measure the effect on the procedural clips.
+2. **Harder wrong answers in training, for procedural activities.** The model learns by matching a camera motion to
+   the right description among wrong ones. In training, as is standard for this kind of model, the wrong ones are the
+   other clips that happen to be in the same batch, so they almost never come from the same recording. In the test,
+   the authors deliberately take them from the same recording (the same person in the same kitchen, doing something
+   else), which makes for a stricter benchmark. We ask whether also practising on same-recording wrong answers helps
+   on procedural clips, where the differences between steps are subtle. As in the authors' test, a wrong answer must
+   describe a different action, so that a repeated step is not counted as wrong.
 3. **Eye gaze as a second input.** We give the model where the person is looking as well as how the camera moves.
    We compare two ways of adding it: keep the authors' trained model unchanged and train only the new gaze part, or
    retrain the whole model with gaze included.
