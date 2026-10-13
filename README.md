@@ -26,7 +26,7 @@ The metric throughout is the paper's own motion-to-text 5-way multiple-choice ac
 and Nymeria (zero-shot). Every experiment starts from the authors' released checkpoints.
 
 Background on what the release contains and what the authors already tried is in [`docs/feasibility.md`](docs/feasibility.md).
-The plan of runs is in [`SCHEDULE.md`](SCHEDULE.md).
+The plan of runs is in [`SCHEDULE.md`](SCHEDULE.md), and what has been done so far is in [`LOG.md`](LOG.md).
 
 ## Layout
 ```
