@@ -1,0 +1,34 @@
+# data and model artefacts (kept on the HPC, not in git)
+data/*
+!data/*.md
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+wandb/
+runs/
+lightning_logs/
+slurm-*.out
+
+# python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+.env
+
+# os / latex
+.DS_Store
+*.aux
+*.log
+*.out
+*.synctex.gz
+
+# reference material: upstream paper PDFs and shallow clones of their repos (re-downloadable)
+papers/
+external/
+
+
+# internal working notes and drafts (not part of the project record)
+notes/
+report/proposal/
