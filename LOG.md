@@ -7,8 +7,9 @@ What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 - Cluster workspace set up under `~/dl4cv/`, with the upstream code cloned.
 - Downloaded the authors' public release: four checkpoints, precomputed retrieval features, and camera-pose trajectories for Ego-Exo4D, DynPose-100K and Nymeria (about 18 GB).
 - Downloaded the licensed Ego-Exo4D parts we need: metadata, annotations and eye gaze for 4,990 takes (about 13 GB). Contents and sizes are in [`data/EGOEXO4D_ANNOTATIONS.md`](data/EGOEXO4D_ANNOTATIONS.md).
-- Started building the conda environment from the upstream `requirements.txt`.
+- Built the conda environment from the upstream `requirements.txt` (PyTorch 2.7, Lightning 2.5).
+- Reproduced the released retrieval numbers from the precomputed features: 44.81% on Ego-Exo4D, matching the paper. Full table in [`results/reproduction.md`](results/reproduction.md).
 - Wrote the feasibility notes ([`docs/feasibility.md`](docs/feasibility.md)) and the run schedule.
 - Created this repository.
 
-**Next:** reproduce the paper's retrieval numbers from the precomputed features, then from the checkpoints.
+**Next:** run the model from the released checkpoints and check it gives the same numbers.
