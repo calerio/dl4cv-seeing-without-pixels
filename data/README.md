@@ -29,6 +29,11 @@ Source: `egoexo -o ~/dl4cv/data/egoexo4d --parts metadata annotations take_eye_g
 | Annotations (keystep, proficiency, atomic descriptions, expert commentary, relations, ego pose, splits) | `~/dl4cv/data/egoexo4d/annotations/` | 11 GB |
 | Eye gaze, 4,990 takes, 3D and 2D, general and personalized CSVs | `~/dl4cv/data/egoexo4d/takes/<take>/eye_gaze/` | 3.1 GB |
 
+## Storage limits to know about
+The cluster limits the number of files as well as the size: 1,000,000 per account (`beegfs quota list-usage`,
+INODE column; `lquota` shows only gigabytes). The pose archives were made on a Mac, so every file has a `._name`
+metadata twin that doubles the count. Unpack them with `tar -xf <archive> --exclude='._*'`.
+
 ## Environments
 - `camformer`: Python 3.9 with the upstream `requirements.txt` (training and evaluation).
 - `dl`: download tools only (`ego4d`, `gdown`, `awscli`).

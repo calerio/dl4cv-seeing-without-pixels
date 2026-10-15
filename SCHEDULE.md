@@ -11,7 +11,7 @@ Written 13 Oct 2026. These are latest dates. Tick a row when it is done and writ
 
 | Done | Finish by | What runs | Why then |
 |---|---|---|---|
-| [ ] | Thu 15 Oct | Reproduce the paper's retrieval numbers from the precomputed features (no GPU), then from the released checkpoints (one short GPU job) | Proves the setup works before anything is built on it |
+| [x] 15 Oct | Thu 15 Oct | Reproduce the paper's retrieval numbers from the precomputed features (no GPU), then from the released checkpoints (one short GPU job) | Proves the setup works before anything is built on it |
 | [ ] | Sun 18 Oct | One from-scratch training run, only to time an epoch; cache the frozen CLIP text embeddings | Every later date depends on this number |
 | [ ] | Tue 20 Oct | Inspect the gaze files: sampling rate, how many takes have gaze, whether they line up with the released pose clips | Last chance to download more before the keys expire |
 | [ ] | Sun 1 Nov | Same-take hard negatives, plus a retrained baseline for a fair comparison | Smallest code change, so it gives a first result early |

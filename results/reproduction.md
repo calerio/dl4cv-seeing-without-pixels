@@ -15,5 +15,15 @@ precomputed features. The task is 5-way multiple choice, so chance is 20%. The p
 
 The Ego-Exo4D figure matches the 44.81% the paper reports for CamFormer, and the four Nymeria figures and the DynPose ViPE figure match the paper's tables as well.
 
-This checks the evaluation script and the released features only. Running the model itself from the released
-checkpoints is the next step.
+## From the released checkpoint
+
+Run on 15 Oct 2026 with `scripts/slurm/eval_checkpoint.sh` (one A100 GPU, under three minutes in all): the model is
+loaded from `checkpoints/egoexo4d_dur8.pt`, run on the Ego-Exo4D test set, and the features it writes are scored
+with the same script.
+
+| Split | Questions | Motion-to-text (%) | Text-to-motion (%) |
+|---|---|---|---|
+| Ego-Exo4D, from the checkpoint | 7,079 | 44.81 | 47.18 |
+
+Both figures are identical to the released features above, so the code, the environment and the data on the
+cluster reproduce the paper's main result end to end.
