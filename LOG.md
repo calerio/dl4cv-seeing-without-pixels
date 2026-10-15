@@ -5,8 +5,11 @@ What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 ## Thu 15 Oct 2026
 - Ran the released Ego-Exo4D checkpoint on the test set (one GPU, under three minutes): 44.81% motion-to-text and 47.18% text-to-motion, identical to the released features and the paper. Details in [`results/reproduction.md`](results/reproduction.md).
 - First row of the schedule done.
+- Timed training from scratch on one GPU: about 8 minutes per epoch (under 6 for training, 2.5 for validation), so the paper's 500 epochs would take about 70 hours.
+- Added our copy of the authors' code under [`src/camformer/`](src/camformer/), with one change: `--resume`, so a long run can continue across several 24-hour cluster jobs ([`scripts/submit_chain.sh`](scripts/submit_chain.sh)). Tested by splitting a run across two jobs. Reasoning and test in [`docs/decisions.md`](docs/decisions.md).
+- Brought the experiment schedule forward to October.
 
-**Next:** a short training run from scratch to time one epoch.
+**Next:** the gaze check, then same-take hard negatives.
 
 ## Tue 13 Oct 2026
 - Paper chosen and registered: *Seeing without Pixels* (Xue et al., CVPR 2026).

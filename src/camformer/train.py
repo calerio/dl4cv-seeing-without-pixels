@@ -124,6 +124,15 @@ def get_args():
   parser.add_argument('--job_name', type=str, default='debug')
   parser.add_argument('--ckpt', type=str, default='')
   parser.add_argument('--init_ckpt', type=str, default='')
+  parser.add_argument(
+      '--resume',
+      action='store_true',
+      help=(
+          'Continue training from <log_dir>/checkpoints/last.ckpt if it exists'
+          ' (weights, optimizer and epoch); start fresh otherwise. Lets a long'
+          ' run span several time-limited cluster jobs with the same --job_name.'
+      ),
+  )
 
   args = parser.parse_args()
   # Internal encoder/checkpoints use an integer code; map the named flag to it.
@@ -203,7 +212,12 @@ def train(args):
   elif args.ckpt:
     trainer.validate(task, ckpt_path=args.ckpt)
   else:
-    trainer.fit(task)
+    last_ckpt = os.path.join(log_dir, 'checkpoints', 'last.ckpt')
+    resume_from = None
+    if args.resume and os.path.exists(last_ckpt):
+      resume_from = last_ckpt
+      print(f'Resuming training from {resume_from}')
+    trainer.fit(task, ckpt_path=resume_from)
 
   end_time = time.time()
   print(f'Total time taken: {end_time - start_time} seconds')
