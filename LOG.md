@@ -2,6 +2,12 @@
 
 What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 
+## Fri 16 Oct 2026
+- Checked the Ego-Exo4D eye-gaze recordings against the released pose clips: gaze is at 10 Hz, starts within 0.1 s of the camera trajectory, and covers every validation and test clip and 99.8% of training clips. No further download is needed. Details in [`results/gaze_check.md`](results/gaze_check.md).
+- Checkpoints now leave out the frozen CLIP model: 12 MB instead of 620 MB, tested across a resumed run ([`docs/decisions.md`](docs/decisions.md), D2).
+
+**Next:** same-take hard negatives and a retrained baseline.
+
 ## Thu 15 Oct 2026
 - Ran the released Ego-Exo4D checkpoint on the test set (one GPU, under three minutes): 44.81% motion-to-text and 47.18% text-to-motion, identical to the released features and the paper. Details in [`results/reproduction.md`](results/reproduction.md).
 - First row of the schedule done.
