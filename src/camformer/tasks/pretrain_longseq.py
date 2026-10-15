@@ -22,7 +22,7 @@ from models.text_encoder import ContextAwareTextEncoder
 import numpy as np
 import pytorch_lightning as pl
 from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix
-from tasks.pretrain import CLIPLoss
+from tasks.pretrain import CLIPLoss, drop_frozen_clip, restore_frozen_clip
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -113,6 +113,12 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
             ' does not match the checkpoint (Ego-Exo4D = rel9d_grav, DynPose ='
             ' rel9d).'
         )
+
+  def on_save_checkpoint(self, checkpoint):
+    drop_frozen_clip(self, checkpoint)
+
+  def on_load_checkpoint(self, checkpoint):
+    restore_frozen_clip(self, checkpoint)
 
   def configure_optimizers(self):
     params = list(self.model.parameters())

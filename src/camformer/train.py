@@ -186,7 +186,7 @@ def train(args):
             project='camera-motion-pretraining',
             name=args.job_name,
             save_dir=log_dir,
-            log_model=True,
+            log_model=False,
         ),
     ]
   else:

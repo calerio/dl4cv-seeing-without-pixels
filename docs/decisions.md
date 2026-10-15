@@ -3,6 +3,24 @@
 Choices that change how we run or compare experiments, with the reason for each. Newest first.
 Each one is meant to be cited in the report.
 
+## D2. Checkpoints leave out the frozen CLIP text model (16 Oct 2026)
+
+**Situation.** Each Lightning checkpoint was about 620 MB, and a run keeps two (best and last). Almost all of
+that is the CLIP ViT-B/32 model, which is frozen and loaded again from its own file every time training
+starts. Our cluster quota is 100 GB, already three-quarters full. W&B was also set to keep a copy of each
+checkpoint (`log_model=True`).
+
+**Decision.** When CLIP is frozen, its weights are removed from the checkpoint before it is saved and filled
+back in from the freshly loaded model when a checkpoint is loaded (`drop_frozen_clip` and
+`restore_frozen_clip` in `tasks/pretrain.py`). Full checkpoints from before this change still load. If CLIP is
+fine-tuned (`--finetune_clip`), nothing is removed. W&B no longer stores checkpoints (`log_model=False`).
+
+**What it changes.** Nothing about training. A checkpoint is now 12 MB instead of 620 MB.
+
+**Test (16 Oct 2026).** A 2-epoch run was split across two 16-minute jobs (703246, 703247). The first was
+stopped by the time limit during epoch 2. The second restored model, optimizer and epoch from the 12 MB
+checkpoint and finished the run.
+
 ## D1. Training runs are split into chained 24-hour jobs (15 Oct 2026)
 
 **Situation.** The authors trained on 8 GPUs for 500 epochs (the defaults in `train.py`). We have one

@@ -53,6 +53,26 @@ class CLIPLoss(nn.Module):
     return (loss_m + loss_t) / 2
 
 
+def drop_frozen_clip(module, checkpoint):
+  """Leaves the frozen CLIP text tower (~600 MB, reloaded at start-up) out of checkpoints."""
+  clip_model = getattr(module, 'clip_model', None)
+  if clip_model is None or any(p.requires_grad for p in clip_model.parameters()):
+    return
+  state = checkpoint['state_dict']
+  for k in [k for k in state if k.startswith('clip_model.')]:
+    del state[k]
+
+
+def restore_frozen_clip(module, checkpoint):
+  """Fills CLIP weights back in when loading a checkpoint saved without them."""
+  state = checkpoint['state_dict']
+  if any(k.startswith('clip_model.') for k in state):
+    return
+  for k, v in module.state_dict().items():
+    if k.startswith('clip_model.'):
+      state[k] = v
+
+
 class CameraPoseTextPretraining(pl.LightningModule):
 
   def __init__(self, args):
@@ -112,6 +132,12 @@ class CameraPoseTextPretraining(pl.LightningModule):
 
     self.test_motion_features = []
     self.test_text_features = []
+
+  def on_save_checkpoint(self, checkpoint):
+    drop_frozen_clip(self, checkpoint)
+
+  def on_load_checkpoint(self, checkpoint):
+    restore_frozen_clip(self, checkpoint)
 
   def configure_optimizers(self):
     return torch.optim.AdamW(
