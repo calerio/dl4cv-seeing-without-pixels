@@ -1,0 +1,12 @@
+# Minimal conda environment for CamFormer.
+# Creates Python 3.9 and installs the Python dependencies via pip (requirements.txt).
+#   conda env create -f environment.yml
+#   conda activate camformer
+name: camformer
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+      - -r requirements.txt
