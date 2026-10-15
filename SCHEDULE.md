@@ -16,7 +16,7 @@ extra seeds, spare time and writing. The original latest dates are in brackets.
 |---|---|---|---|
 | [x] 15 Oct | Thu 15 Oct | Reproduce the paper's retrieval numbers from the precomputed features (no GPU), then from the released checkpoints (one short GPU job) | Proves the setup works before anything is built on it |
 | [x] 15 Oct | Fri 16 Oct (18 Oct) | One from-scratch training run, only to time an epoch (about 8 minutes); cache the frozen CLIP text embeddings (postponed: not measured yet whether it saves time) | Every later date depends on this number |
-| [ ] | Sat 17 Oct (20 Oct) | Inspect the gaze files: sampling rate, how many takes have gaze, whether they line up with the released pose clips | Leaves three days to download more before the keys expire on 21 Oct |
+| [x] 16 Oct | Sat 17 Oct (20 Oct) | Inspect the gaze files: sampling rate, how many takes have gaze, whether they line up with the released pose clips | Leaves three days to download more before the keys expire on 21 Oct |
 | [ ] | Tue 20 Oct (1 Nov) | Same-take hard negatives, plus a retrained baseline for a fair comparison | Smallest code change, so it gives a first result early; the baseline is reused by every later experiment |
 | [ ] | Wed 28 Oct (15 Nov) | Single ego+exo model, with and without the domain token | Main contribution and the most engineering (frame rates, axes, two training tasks); code is written while the hard-negative runs train |
 | [ ] | Wed 4 Nov (18 Nov) | Eye gaze as a second input: frozen versus full fine-tuning | Depends on the gaze check; first to be cut if time runs short |
