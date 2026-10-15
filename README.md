@@ -40,12 +40,12 @@ The plan of runs is in [`SCHEDULE.md`](SCHEDULE.md), and what has been done so f
 
 ## Layout
 ```
-src/            model and training code
+src/camformer/  the authors' code (Apache 2.0), with our changes as separate commits
 configs/        experiment configs
-scripts/slurm/  job scripts for the Bocconi HPC cluster
+scripts/        job scripts for the Bocconi HPC cluster (slurm/) and chained submission
 notebooks/      exploration only
 data/           notes on where the data is and how to fetch it (the data itself is not in git)
-docs/           background notes
+docs/           background notes and the decisions log (decisions.md)
 results/        metrics tables and figures that go in the report
 report/  poster/  presentation/
 ```
