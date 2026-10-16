@@ -1,6 +1,6 @@
 # Review guide
 
-What a reviewer (person or `/code-review`) should look for in a pull request to this repository.
+What a reviewer (person or tool) should look for in a pull request to this repository.
 This is research code: a bug rarely crashes, it quietly produces a wrong number. Review for that.
 
 ## What counts as a finding

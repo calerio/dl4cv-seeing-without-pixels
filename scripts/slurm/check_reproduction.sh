@@ -12,7 +12,7 @@
 # Regression check: our code must still reproduce Table 2 of the paper from the released checkpoint
 # (motion-to-text 44.81 overall on the Ego-Exo4D 5-way test). Run it after any change to the training,
 # data or evaluation code, before spending GPU time on new runs. Fails (exit 1) on any difference.
-# Usage, from ~/dl4cv/camformer after scripts/deploy.sh:  sbatch check_reproduction.sh
+# Usage, after scripts/deploy.sh:  cd ~/dl4cv/camformer && sbatch ~/dl4cv/check_reproduction.sh
 
 module load sw/miniconda3
 eval "$(conda shell.bash hook)"
