@@ -112,6 +112,9 @@ def get_args():
   )
   parser.add_argument('--finetune_clip', action='store_true')
   parser.add_argument(
+      '--seed', type=int, default=0, help='Seeds Python, NumPy, PyTorch and data workers.'
+  )
+  parser.add_argument(
       '--same_take_k',
       type=int,
       default=0,
@@ -247,4 +250,5 @@ def train(args):
 
 if __name__ == '__main__':
   args = get_args()
+  pl.seed_everything(args.seed, workers=True)
   train(args)
