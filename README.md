@@ -27,7 +27,7 @@ pixel-free model can be pushed on both.
    the authors deliberately take them from the same recording (the same person in the same kitchen, doing something
    else), which makes for a stricter benchmark. We ask whether also practising on same-recording wrong answers helps
    on procedural clips, where the differences between steps are subtle. As in the authors' test, a wrong answer must
-   describe a different action, so that a repeated step is not counted as wrong.
+   have a different main verb from the right one, so that a repeated step is not counted as wrong.
 3. **Eye gaze as a second input.** We give the model where the person is looking as well as how the camera moves.
    We compare two ways of adding it: keep the authors' trained model unchanged and train only the new gaze part, or
    retrain the whole model with gaze included.
