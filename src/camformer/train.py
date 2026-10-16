@@ -112,6 +112,23 @@ def get_args():
   )
   parser.add_argument('--finetune_clip', action='store_true')
   parser.add_argument(
+      '--same_take_k',
+      type=int,
+      default=0,
+      help='Ego-Exo4D training: group up to K clips of one take per batch (0 = random batches).',
+  )
+  parser.add_argument(
+      '--same_take_gap',
+      type=float,
+      default=4.0,
+      help='Minimum seconds between caption timestamps of clips grouped together.',
+  )
+  parser.add_argument(
+      '--mask_dup_text',
+      action='store_true',
+      help='Do not use pairs with the identical caption as negatives in the training loss.',
+  )
+  parser.add_argument(
       '--cls_loss_weight',
       type=float,
       default=0.0,

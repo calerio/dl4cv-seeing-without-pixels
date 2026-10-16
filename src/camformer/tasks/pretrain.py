@@ -43,10 +43,19 @@ class CLIPLoss(nn.Module):
     super().__init__()
     self.temperature = temperature
 
-  def forward(self, motion_features, text_features):
+  def forward(self, motion_features, text_features, texts=None):
     motion_features = F.normalize(motion_features, dim=-1)
     text_features = F.normalize(text_features, dim=-1)
     logits = torch.matmul(motion_features, text_features.t()) / self.temperature
+    if texts is not None:
+      # Pairs with the identical caption are not negatives of each other.
+      seen = {}
+      ids = torch.tensor(
+          [seen.setdefault(t, len(seen)) for t in texts], device=logits.device
+      )
+      same = ids[:, None] == ids[None, :]
+      same.fill_diagonal_(False)
+      logits = logits.masked_fill(same, float('-inf'))
     labels = torch.arange(len(motion_features), device=motion_features.device)
     loss_m = F.cross_entropy(logits, labels)
     loss_t = F.cross_entropy(logits.t(), labels)

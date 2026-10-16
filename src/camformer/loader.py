@@ -16,8 +16,57 @@
 from datasets.dynpose import DynPoseCamTextPair
 from datasets.egoexo4d_pretrain import EgoExo4DCameraPoseLongSeqForPretraining
 from datasets.nymeria import NymeriaCamMotionTextPair
+import random
+
 import torch
 from torch.nn.utils.rnn import pad_sequence
+
+
+class SameTakeBatchSampler(torch.utils.data.Sampler):
+  """Random batches in which clips of the same take come in groups of up to k.
+
+  Each epoch, the clips of every take are shuffled and split greedily into
+  groups of at most k clips whose caption timestamps are at least min_gap
+  seconds apart. The groups are shuffled and packed into batches, so every clip
+  is used once per epoch and the number of batches matches drop_last=True.
+  """
+
+  def __init__(self, take_names, timestamps, batch_size, k, min_gap):
+    self.batch_size = batch_size
+    self.k = k
+    self.min_gap = min_gap
+    self.timestamps = list(timestamps)
+    self.takes = {}
+    for i, take in enumerate(take_names):
+      self.takes.setdefault(take, []).append(i)
+    self.num_batches = len(self.timestamps) // batch_size
+
+  def _groups(self):
+    groups = []
+    for clips in self.takes.values():
+      clips = random.sample(clips, len(clips))
+      open_groups = []
+      for i in clips:
+        t = self.timestamps[i]
+        for g in open_groups:
+          if len(g) < self.k and all(
+              abs(t - self.timestamps[j]) >= self.min_gap for j in g
+          ):
+            g.append(i)
+            break
+        else:
+          open_groups.append([i])
+      groups.extend(open_groups)
+    random.shuffle(groups)
+    return groups
+
+  def __iter__(self):
+    flat = [i for g in self._groups() for i in g]
+    for b in range(self.num_batches):
+      yield flat[b * self.batch_size : (b + 1) * self.batch_size]
+
+  def __len__(self):
+    return self.num_batches
 
 
 def pose_text_collate(batch):
@@ -79,6 +128,25 @@ def create_loader(args, mode):
     collate_fn = pose_text_collate
   else:
     raise ValueError(f'Invalid dataset: {args.dataset}')
+
+  if (
+      mode == 'train'
+      and args.dataset == 'egoexo4d_pretrain_longseq'
+      and getattr(args, 'same_take_k', 0) > 0
+  ):
+    sampler = SameTakeBatchSampler(
+        dataset.df['take_name'],
+        dataset.df['timestamp'],
+        args.batch_size,
+        args.same_take_k,
+        args.same_take_gap,
+    )
+    return torch.utils.data.DataLoader(
+        dataset,
+        batch_sampler=sampler,
+        collate_fn=collate_fn,
+        num_workers=args.num_workers,
+    )
 
   shuffle = mode == 'train'
   drop_last = mode == 'train'

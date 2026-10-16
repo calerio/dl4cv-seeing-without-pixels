@@ -166,7 +166,8 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
     assert not torch.isnan(text_features).any(), 'NaN in text_features'
     assert not torch.isinf(text_features).any(), 'Inf in text_features'
 
-    contrastive_loss = self.criterion(features, text_features)
+    texts = [t[2] for t in text_list] if getattr(self.args, 'mask_dup_text', False) else None
+    contrastive_loss = self.criterion(features, text_features, texts)
     total_loss = contrastive_loss
 
     if self.args.cls_loss_weight > 0:
