@@ -3,6 +3,35 @@
 Choices that change how we run or compare experiments, with the reason for each. Newest first.
 Each one is meant to be cited in the report.
 
+## D3. Hard negatives: fine-tune, add a within-take loss term, and gate the full runs on one pilot (16 Oct 2026)
+
+**Situation.** Two first fine-tuning runs (20 epochs from the released checkpoint, without a fixed seed) gave
+the same test accuracy as the released model whether batches were random or grouped by take (44.79 and 44.84
+against 44.81 motion-to-text). Before changing anything we measured why, on the released checkpoint and both
+runs, without training (`diagnose_within_take.py`):
+
+| Batches | Same-take negatives per clip (different verb) | Share of the softmax over negatives that they carry |
+|---|---|---|
+| random | 1.1 of 1,023 | 0.6% |
+| 8 clips per take | 6.0 of 1,023 | 2.8% |
+
+So grouping 8 clips per take changed less than 3% of what the loss pushes on: the hard negatives were
+diluted, not ineffective. The model is also far from solving the within-take task where it was trained: on
+5,000 within-take questions built from training takes with the paper's rule, it picks the right caption 59.8%
+of the time (60.2% and 60.4% after the two runs). There is room to learn, and the first runs did not use it.
+
+**Decision.** We keep fine-tuning the released checkpoint at the authors' learning rate, as the course
+recommends for a model that is already near an optimum (Lecture 7, transfer learning). Retraining from scratch
+would not change the dilution and would cost about 80 GPU-hours. Instead we add a second loss term
+(`--within_take_weight`, weight 1): each clip must pick its own caption among the clips of its own take that
+have a different verb, which is close to the format of the test. The authors' loss is kept unchanged next to it.
+
+**Gate, fixed before the pilot.** One pilot pair, seed 0, 20 epochs: A (random batches, authors' loss) and B'
+(8 clips per take, verb mask, within-take term). The three-seed runs of A, B' and C (random batches, verb mask)
+go ahead only if B' against A shows all three of: a clearly lower within-take loss in training, higher accuracy
+on the within-take questions from training takes, and at least 1 point more on the procedural test questions.
+Otherwise we report the negative result with these measurements and stop this experiment.
+
 ## D2. Checkpoints leave out the frozen CLIP text model (16 Oct 2026)
 
 **Situation.** Each Lightning checkpoint was about 620 MB, and a run keeps two (best and last). Almost all of
