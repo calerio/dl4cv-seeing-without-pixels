@@ -35,6 +35,28 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import re
+
+# Subject words that open Ego-Exo4D narrations ("C ...", "The man O ...").
+_SUBJECT_WORDS = {
+    'c', 'the', 'a', 'an', 'man', 'woman', 'player', 'person', 'he', 'she',
+    'boy', 'girl', 'lady', 'guy', 'x', 'y', 'o',
+}
+
+
+def primary_verb(caption):
+  """First word after the subject: 'C picks the spoon.' -> 'picks'.
+
+  Approximates the paper's distractor rule (supp. 2.1.1: distractors have primary
+  action verbs that do not overlap with the answer). In the released test set,
+  98.7% of questions satisfy the rule under this definition. Captions with no
+  word left fall back to the whole caption.
+  """
+  words = re.sub(r'[^a-z ]', ' ', caption.lower()).split()
+  while words and words[0] in _SUBJECT_WORDS:
+    words = words[1:]
+  return words[0] if words else caption
+
 
 class CLIPLoss(nn.Module):
   """Symmetric InfoNCE over matched (motion, text) pairs in a batch."""
@@ -44,11 +66,11 @@ class CLIPLoss(nn.Module):
     self.temperature = temperature
 
   def forward(self, motion_features, text_features, texts=None):
+    """texts: optional keys per pair; pairs with equal keys are not negatives."""
     motion_features = F.normalize(motion_features, dim=-1)
     text_features = F.normalize(text_features, dim=-1)
     logits = torch.matmul(motion_features, text_features.t()) / self.temperature
     if texts is not None:
-      # Pairs with the identical caption are not negatives of each other.
       seen = {}
       ids = torch.tensor(
           [seen.setdefault(t, len(seen)) for t in texts], device=logits.device

@@ -22,7 +22,7 @@ from models.text_encoder import ContextAwareTextEncoder
 import numpy as np
 import pytorch_lightning as pl
 from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix
-from tasks.pretrain import CLIPLoss, drop_frozen_clip, restore_frozen_clip
+from tasks.pretrain import CLIPLoss, drop_frozen_clip, primary_verb, restore_frozen_clip
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -166,7 +166,13 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
     assert not torch.isnan(text_features).any(), 'NaN in text_features'
     assert not torch.isinf(text_features).any(), 'Inf in text_features'
 
-    texts = [t[2] for t in text_list] if getattr(self.args, 'mask_dup_text', False) else None
+    mask = getattr(self.args, 'neg_mask', 'none')
+    if mask == 'caption':
+      texts = [t[2] for t in text_list]
+    elif mask == 'verb':
+      texts = [primary_verb(t[2]) for t in text_list]
+    else:
+      texts = None
     contrastive_loss = self.criterion(features, text_features, texts)
     total_loss = contrastive_loss
 

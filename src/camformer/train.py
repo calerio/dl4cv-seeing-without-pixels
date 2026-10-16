@@ -127,9 +127,13 @@ def get_args():
       help='Minimum seconds between caption timestamps of clips grouped together.',
   )
   parser.add_argument(
-      '--mask_dup_text',
-      action='store_true',
-      help='Do not use pairs with the identical caption as negatives in the training loss.',
+      '--neg_mask',
+      choices=['none', 'caption', 'verb'],
+      default='none',
+      help=(
+          'Training loss only: pairs with the identical caption (caption) or the'
+          ' same primary verb (verb) are not used as negatives.'
+      ),
   )
   parser.add_argument(
       '--cls_loss_weight',
