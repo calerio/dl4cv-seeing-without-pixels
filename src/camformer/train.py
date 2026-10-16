@@ -184,6 +184,9 @@ def train(args):
   with open(os.path.join(log_dir, 'args.json'), 'w') as f:
     json.dump(vars(args), f, indent=4)
 
+  if args.same_take_k > 0 and args.num_gpus > 1:
+    raise ValueError('--same_take_k supports one GPU only')
+
   checkpoint_callback_best = ModelCheckpoint(
       dirpath=os.path.join(log_dir, 'checkpoints'),
       filename='best-{epoch:02d}-{val_loss:.4f}',
@@ -217,6 +220,8 @@ def train(args):
       callbacks=[checkpoint_callback_best],
       logger=loggers,
       strategy='ddp_find_unused_parameters_true',
+      # The same-take batch sampler is single-GPU; Lightning would otherwise try to shard it.
+      use_distributed_sampler=args.same_take_k == 0,
   )
 
   # `--ckpt` restores a full Lightning checkpoint. The released slim encoder
