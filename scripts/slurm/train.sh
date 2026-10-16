@@ -25,4 +25,5 @@ export TMPDIR=~/tmp
 export WANDB_MODE=offline   # compute nodes have no internet
 
 echo "job $SLURM_JOB_ID on $(hostname), started $(date)"
+echo "code revision $(cat REVISION 2>/dev/null || echo unknown)"
 python train.py --num_gpus 1 --num_workers 6 --resume "$@"

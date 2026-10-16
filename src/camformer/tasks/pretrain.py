@@ -37,25 +37,72 @@ import torch.nn.functional as F
 
 import re
 
-# Subject words that open Ego-Exo4D narrations ("C ...", "The man O ...").
-_SUBJECT_WORDS = {
+# Words that open Ego-Exo4D narrations before the action verb ("C ...", "The man O ...",
+# "C is ...", "C then ...", "C starts to ...").
+_LEADING_WORDS = {
     'c', 'the', 'a', 'an', 'man', 'woman', 'player', 'person', 'he', 'she',
-    'boy', 'girl', 'lady', 'guy', 'x', 'y', 'o',
+    'boy', 'girl', 'lady', 'guy', 'x', 'y', 'o', 's', 'is', 'are', 'was',
+    'then', 'again', 'also', 'still', 'just', 'slowly', 'quickly', 'gently',
+    'carefully', 'starts', 'begins', 'continues', 'keeps', 'tries', 'to',
 }
 
 
+def _verb_stem(word):
+  """Crude stem so that picks / picking / picked share one key."""
+  if word.endswith('ing') and len(word) > 5:
+    word = word[:-3]
+  elif word.endswith('ied'):
+    word = word[:-3] + 'y'
+  elif word.endswith('ed') and len(word) > 4:
+    word = word[:-2]
+  elif word.endswith('ies'):
+    word = word[:-3] + 'y'
+  elif word.endswith(('ches', 'shes', 'sses', 'xes', 'zes')):
+    word = word[:-2]
+  elif word.endswith('s') and not word.endswith('ss'):
+    word = word[:-1]
+  if len(word) > 3 and word[-1] == word[-2]:  # stopp(ing) -> stop
+    word = word[:-1]
+  return word.rstrip('e')  # mov(e) / moving -> mov
+
+
 def primary_verb(caption):
-  """First word after the subject: 'C picks the spoon.' -> 'picks'.
+  """Stemmed action verb of a narration: 'C is picking the spoon.' -> 'pick'.
 
   Approximates the paper's distractor rule (supp. 2.1.1: distractors have primary
-  action verbs that do not overlap with the answer). In the released test set,
-  98.7% of questions satisfy the rule under this definition. Captions with no
-  word left fall back to the whole caption.
+  action verbs that do not overlap with the answer). Captions with no word left
+  fall back to the whole caption.
   """
   words = re.sub(r'[^a-z ]', ' ', caption.lower()).split()
-  while words and words[0] in _SUBJECT_WORDS:
+  while words and words[0] in _LEADING_WORDS:
     words = words[1:]
-  return words[0] if words else caption
+  return _verb_stem(words[0]) if words else caption
+
+
+def within_take_loss(motion_features, text_features, takes, keys, temperature=0.07):
+  """InfoNCE where each pair competes only with pairs from its own take that have a different key.
+
+  takes, keys: one string per pair (take name, primary verb). Pairs with no such
+  competitor are left out. Returns (loss, number of pairs that contributed).
+  """
+  motion_features = F.normalize(motion_features, dim=-1)
+  text_features = F.normalize(text_features, dim=-1)
+  logits = torch.matmul(motion_features, text_features.t()) / temperature
+
+  def ids(xs):
+    seen = {}
+    return torch.tensor([seen.setdefault(x, len(seen)) for x in xs], device=logits.device)
+
+  t, k = ids(takes), ids(keys)
+  allowed = (t[:, None] == t[None, :]) & (k[:, None] != k[None, :])
+  rows = allowed.any(dim=1)
+  allowed.fill_diagonal_(True)
+  if not rows.any():
+    return logits.new_zeros(()), 0
+  logits = logits.masked_fill(~allowed, float('-inf'))[rows][:, rows]
+  labels = torch.arange(len(logits), device=logits.device)
+  loss = (F.cross_entropy(logits, labels) + F.cross_entropy(logits.t(), labels)) / 2
+  return loss, int(rows.sum())
 
 
 class CLIPLoss(nn.Module):

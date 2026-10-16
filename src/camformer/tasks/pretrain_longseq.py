@@ -22,7 +22,7 @@ from models.text_encoder import ContextAwareTextEncoder
 import numpy as np
 import pytorch_lightning as pl
 from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix
-from tasks.pretrain import CLIPLoss, drop_frozen_clip, primary_verb, restore_frozen_clip
+from tasks.pretrain import CLIPLoss, drop_frozen_clip, primary_verb, restore_frozen_clip, within_take_loss
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -176,6 +176,18 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
     contrastive_loss = self.criterion(features, text_features, texts)
     total_loss = contrastive_loss
 
+    # Within-take term: each pair against same-take pairs with a different verb.
+    # Logged in every run, as a diagnostic; trained on only if its weight is > 0.
+    weight = getattr(self.args, 'within_take_weight', 0.0)
+    takes = [t[3] for t in text_list]
+    verbs = [primary_verb(t[2]) for t in text_list]
+    with torch.set_grad_enabled(weight > 0 and torch.is_grad_enabled()):
+      wt_loss, wt_rows = within_take_loss(features, text_features, takes, verbs)
+    if weight > 0:
+      total_loss = total_loss + weight * wt_loss
+    self.log('train_within_take_loss', wt_loss, on_step=False, on_epoch=True, logger=True)
+    self.log('train_within_take_rows', float(wt_rows), on_step=False, on_epoch=True, logger=True)
+
     if self.args.cls_loss_weight > 0:
       motion_features_avg = motion_features.mean(dim=1)
       cls_logits = self.cls_model(motion_features_avg)
@@ -216,6 +228,13 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
     text_features = self.encode_text(text_list, full_text_list)
 
     loss = self.criterion(features, text_features)
+    wt_loss, _ = within_take_loss(
+        features,
+        text_features,
+        [t[3] for t in text_list],
+        [primary_verb(t[2]) for t in text_list],
+    )
+    self.log('val_within_take_loss', wt_loss, on_step=False, on_epoch=True, logger=True)
     features = F.normalize(features, dim=-1)
     text_features = F.normalize(text_features, dim=-1)
     sim_matrix = torch.matmul(features, text_features.t())

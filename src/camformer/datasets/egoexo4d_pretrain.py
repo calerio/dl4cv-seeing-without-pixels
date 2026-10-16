@@ -239,7 +239,7 @@ class EgoExo4DCameraPoseLongSeqForPretraining(torch.utils.data.Dataset):
     scenario_label = self.take_mapping[row['take_name']]
     return (
         cam_traj_slice,
-        [int(t0), int(t1), row['description_text']],
+        [int(t0), int(t1), row['description_text'], row['take_name']],
         scenario_label,
         [],
     )

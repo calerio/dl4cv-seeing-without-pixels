@@ -127,6 +127,12 @@ def get_args():
       help='Minimum seconds between caption timestamps of clips grouped together.',
   )
   parser.add_argument(
+      '--within_take_weight',
+      type=float,
+      default=0.0,
+      help='Weight of the within-take loss term (each clip against same-take clips with a different verb).',
+  )
+  parser.add_argument(
       '--neg_mask',
       choices=['none', 'caption', 'verb'],
       default='none',
@@ -199,7 +205,7 @@ def train(args):
       filename='best-{epoch:02d}-{val_loss:.4f}',
       monitor='val_loss',
       mode='min',
-      save_top_k=1,
+      save_top_k=0,  # only last.ckpt: test questions come from the validation takes
       save_last=True,
   )
 

@@ -9,7 +9,8 @@
 #SBATCH --output=out/%x_%j.out
 #SBATCH --error=err/%x_%j.err
 
-# Tests the last checkpoint of one of our training runs on the Ego-Exo4D 5-way test and scores it.
+# Tests the last checkpoint of one of our training runs on the Ego-Exo4D 5-way test and scores it
+# per activity type and visibility (score_mcq.py).
 # Usage, from ~/dl4cv/camformer:  sbatch eval_run.sh <job_name of the training run>
 # The checkpoint is linked under a run-specific name, because the test code names its output folder
 # after the checkpoint file and every run's file is called last.ckpt.
@@ -32,6 +33,7 @@ python train.py --dataset egoexo4d_pretrain_longseq --test --scenario all \
     --pose_encoding rel9d_grav --take_duration 8 --sample_dur \
     --num_gpus 1 --batch_size 1000 --ckpt "$ckpt"
 
-for f in $(find final_data/retrieval_features/ours/egoexo4d_pretrain_longseq -path "*/$run/*" -name frames.pt); do
-  d=$(dirname "$f"); echo "== $d"; python eval_retrieval.py "$d"
-done
+# Per-split table, plus one row per test question for paired comparisons between runs.
+d=$(dirname "$(find final_data/retrieval_features/ours/egoexo4d_pretrain_longseq -path "*/$run/*" -name frames.pt | head -1)")
+echo "== $d"
+python score_mcq.py "$d" --out ~/data/logs/egoexo4d_pretrain_longseq/$run/test_questions.csv
