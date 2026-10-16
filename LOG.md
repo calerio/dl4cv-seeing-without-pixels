@@ -5,8 +5,11 @@ What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 ## Fri 16 Oct 2026
 - Checked the Ego-Exo4D eye-gaze recordings against the released pose clips: gaze is at 10 Hz, starts within 0.1 s of the camera trajectory, and covers every validation and test clip and 99.8% of training clips. No further download is needed. Details in [`results/gaze_check.md`](results/gaze_check.md).
 - Checkpoints now leave out the frozen CLIP model: 12 MB instead of 620 MB, tested across a resumed run ([`docs/decisions.md`](docs/decisions.md), D2).
+- Found that every question in the Ego-Exo4D test offers five options from the same recording, which motivates training with same-take negatives. Design in [`docs/hard_negatives.md`](docs/hard_negatives.md).
+- Added a batch sampler that groups clips of one take (`--same_take_k`) and a mask that stops identical captions from counting as negatives (`--mask_dup_text`); both off by default.
+- Started two 20-epoch fine-tuning runs from the released checkpoint: baseline (A) and same-take negatives with the mask (B). Tests are queued to run when each finishes.
 
-**Next:** same-take hard negatives and a retrained baseline.
+**Next:** score A and B; then run C (mask only).
 
 ## Thu 15 Oct 2026
 - Ran the released Ego-Exo4D checkpoint on the test set (one GPU, under three minutes): 44.81% motion-to-text and 47.18% text-to-motion, identical to the released features and the paper. Details in [`results/reproduction.md`](results/reproduction.md).
