@@ -13,6 +13,10 @@ the next step: "a single, unified trajectory encoder ... introducing an explicit
 2. Does telling the model which domain a clip comes from (a domain token) help, compared with the same model
    without it?
 
+Hypothesis: both domains share basic camera motions (walking, turning, stopping, looking down), so a shared
+model can reuse them; but the two domains differ in pose source, scale and noise, so training on both can also
+interfere. The runs below separate the two effects.
+
 ## What the paper did (and what the code shows)
 | | Ego-Exo4D (ego) | DynPose-100K (exo) |
 |---|---|---|
@@ -37,13 +41,18 @@ authors' split and we keep it, so our numbers stay comparable; the report mentio
 Every change sits behind a flag whose default reproduces the authors' code.
 
 1. **Start from the released ego model** (`egoexo4d_dur8.pt`), fine-tuned at the authors' learning rate
-   (1e-4), as in experiment 1 and as the course recommends (Lecture 7, transfer learning). It is the only
-   released model with the gravity branch, which a shared model needs for ego clips. The released exo model
+   (1e-4), as in experiment 1 and as the course recommends (Lecture 7, transfer learning). Ego-Exo4D models are
+   the only released models with the gravity branch (`egoexo4d_dur8.pt` and `egoexo4d_dur16.pt`), which a shared
+   model needs for ego clips; we take the 8-second one, which matches the ego test. The released exo model
    cannot be merged into it, so the shared model meets exo data starting from the ego weights. Control E→X
    below measures what that costs.
 2. **Exo clips go through the ego architecture.** Each exo clip is encoded like an ego clip whose labelled
-   window is the whole clip: pooling over the pose frames only. For the exo model this is the same pooling the
-   authors used (with `rel9d` nothing is prepended, so their mean was over pose frames too).
+   window is the whole clip. This is not the authors' exo computation. Their exo task mean-pools the encoder
+   states first and then applies LayerNorm and the output projection (`cm_encoder.py`, lines 161-173); the
+   long-sequence task applies LayerNorm and the projection to each frame and then pools over the window
+   (`tasks/pretrain_longseq.py`, lines 137-141). LayerNorm is not linear, so the two give different embeddings
+   from the same weights. Check before training: run the released exo model through the long-sequence path on
+   its own test and record the gap to 46.3. This is a measurement, not a gate.
 3. **No gravity for exo.** The released ego model was trained with gravity dropout: half of the time its
    gravity token was replaced by a learned "gravity unknown" token (`learnable_gravity` in `cm_encoder.py`).
    Exo clips always get that learned token. This follows the paper's rule (no gravity from monocular video)
@@ -57,8 +66,9 @@ Every change sits behind a flag whose default reproduces the authors' code.
 5. **Common pose rate** (`--exo_resample_hz`, 0 = native). ViPE poses (30 FPS) are resampled to the ego rate,
    20 FPS (linear for translation, spherical for rotation), because the positional encoding counts frames, not
    seconds: at native rates one position is 50 ms for ego and 33 ms for exo. **Open:** the released exo model was
-   trained at 30 FPS. Before training, test it on the resampled test set (one 3-minute job). If it loses more
-   than 2 points there, resampling becomes an ablation instead of the default.
+   trained at 30 FPS. Before training, compare it at native and resampled rates on validation clips that are not
+   in the test set (5,452 remain) with full retrieval, never on the test. If it loses more than 2 points of
+   recall at 5, resampling becomes an ablation instead of the default.
 6. **Common axes** (`--exo_to_aria_axes`). Exo poses are turned into the Aria camera frame by a fixed 180°
    rotation about the forward axis (x → −x, y → −y), applied to the camera frame before the relative poses are
    computed. The authors did exactly this when they fed video-estimated poses to the Aria-trained model
@@ -78,39 +88,50 @@ Every change sits behind a flag whose default reproduces the authors' code.
 
 ## Runs
 All runs: 20 epochs of their domain(s), batch 1,024, learning rate 1e-4, last checkpoint tested (no checkpoint
-is picked on validation, because both test sets are built from validation clips). Each domain gets the same
+is picked on validation, because both test sets are built from validation clips), validation every 5 epochs
+for monitoring only. Ego data always uses the same flags (`--take_duration 8 --sample_dur`), and all runs of one
+seed use one code revision. Each domain gets the same
 number of updates in every run that trains on it: 3,100 ego steps and 1,720 exo steps.
 
 | Run | Starts from | Trains on | Domain token | Purpose |
 |---|---|---|---|---|
 | R. Released | the two released models | none | n/a | Reference rows (44.81 / 46.3) |
 | Z. Zero-shot | released ego | none | n/a | How far the ego model reaches on exo with no exo training |
+| Z'. Zero-shot | released exo | none | n/a | The reverse: the exo model on the ego test |
 | S-ego | released ego | ego | n/a | Ego specialist with the same extra training. Same settings as run A of experiment 1, but retrained for every seed on the same code revision as U0 and U1, so the comparison does not mix code versions |
 | S-exo | released exo | exo | n/a | Exo specialist with the same extra training |
 | E→X | released ego | exo | n/a | Exo from the ego weights: separates "starting from ego" from "sharing one model" |
-| U0 | released ego | ego + exo | off | One model, no domain information |
+| U0 | released ego | ego + exo | off | One model, no explicit token |
 | U1 | released ego | ego + exo | on | One model with the domain token |
 
-S-exo uses the authors' exo setup (`rel9d`, native rate unless item 5 changes it). U0, U1, E→X and Z use
-items 2 to 7. So on the exo test, U1 against S-exo mixes three differences (starting weights, input
-preparation, sharing), while U1 against E→X isolates sharing: same start, same inputs, same exo steps. The
-report reads the two comparisons in that order.
+S-exo uses the authors' exo setup (`rel9d`, native rate unless item 5 changes it, their pooling). U0, U1, E→X
+and Z use items 2 to 7. So on the exo test, U1 against S-exo mixes four differences (starting weights, input
+preparation, pooling and architecture, sharing), while U1 against E→X isolates sharing: same start, same
+inputs, same architecture, same exo steps. The report reads E→X first.
+
+U0 is not blind to the domain. Exo clips always carry the "gravity unknown" token, and translation scale and
+clip length differ between domains, so the encoder can tell them apart without the domain token. Our prior is
+that U1 − U0 is close to zero. A null result means the explicit token is redundant given these cues; it does
+not mean a shared model needs no conditioning.
 
 ## Evaluation
 - Ego-Exo4D five-way test, motion-to-text and text-to-motion, by type and view (`score_mcq.py`).
 - DynPose-100K ViPE five-way test, 1,000 questions, motion-to-text and text-to-motion (`eval_retrieval.py`, plus
   a per-question dump for the paired bootstrap).
-- Seeds 0, 1, 2. Mean and standard deviation over seeds; for each seed, paired bootstrap over questions
-  (over takes for Ego-Exo4D, over videos for DynPose) for U1 − S, U1 − U0 and U1 − E→X.
+- Seeds 0, 1, 2. For each comparison (U1 − S, U1 − U0, U1 − E→X) and each test, one 95% interval from
+  `compare_runs.py`: a paired bootstrap that resamples seeds, then takes (Ego-Exo4D) or videos (DynPose). With
+  three seeds the seed level is rough, so per-seed results are reported next to it.
 - Honest limit: with 1,000 DynPose questions one run's accuracy has a standard error of about 1.6 points, so
   differences under about 3 points are not resolvable on that test from a single seed.
 
 **Reporting rule, fixed now.**
-- "One model matches the specialists" is claimed only if, averaged over the three seeds, U1 is within 1 point
-  of S-ego on Ego-Exo4D and within 1 point of S-exo on DynPose, and the bootstrap's 95% lower bound for
-  U1 − S is above −2 points on both.
-- "The domain token helps" is claimed only if U1 − U0 is positive on both tests on average and its 95% interval
-  excludes zero on at least one.
+- "One model matches the specialists" is claimed only if the 95% interval for U1 − S lies inside ±1.5 points
+  on Ego-Exo4D and inside ±3 points on DynPose. The margins are the smallest differences each test can resolve
+  (7,079 against 1,000 questions).
+- "The domain token helps" is claimed only if the 95% interval for U1 − U0 on DynPose excludes zero and is
+  positive, with U1 − U0 not negative on Ego-Exo4D. DynPose is named in advance because exo is the domain the
+  token should help: the ego weights already fit ego clips. One interval, one test, so there is one chance of a
+  false positive, not six.
 - Anything else is reported as measured, including a negative result.
 
 **Pilot gate.** Seed 0 of S-ego, S-exo, E→X, U0 and U1 runs first, all on one code revision. Seeds 1
@@ -118,18 +139,20 @@ and 2 run only if all seed-0 runs finished without errors and U1 is within 5 poi
 tests. Otherwise we stop, report seed 0 with that diagnosis, and move the GPUs to experiment 3.
 
 ## Compute
-Measured: one ego epoch is about 5.8 min of training and 2.5 min of validation on one A100. Exo clips are shorter,
-so 86 exo steps should take at most 3 min plus a short validation (**Open:** time it in the smoke test).
+Measured: one ego epoch is about 5.8 min of training and 2.5 min of validation on one A100. The cost of an exo
+step is not known: whole ViPE clips at 30 FPS may be longer than ego windows, and attention cost grows with the
+square of the length. **Open:** time it in the smoke test. The table assumes an exo step costs about as much as
+an ego step.
 
 | Run | Per seed |
 |---|---|
-| U0, U1 | about 4 h each (20 × 241 steps plus two validations per epoch) |
-| S-exo, E→X | about 1.5 h each |
-| S-ego | about 3 h (20 ego epochs) |
-| Tests (about 3 min each) and Z | under 1 h in all |
+| U0, U1 | about 3 h each (20 × 241 steps, validation every 5 epochs) |
+| S-exo, E→X | about 1.2 h each |
+| S-ego | about 2 h (20 ego epochs) |
+| Tests (about 3 min each), Z and Z' | under 1 h in all |
 
-About 14 GPU-hours per seed, 42 for three seeds: about 21 hours of wall time on our 2 GPUs. The pilot (seed 0)
-is about 7 hours of wall time. Every run of one seed uses the same code revision, which is recorded with its
+About 12 GPU-hours per seed, 36 for three seeds: about 18 hours of wall time on our 2 GPUs. The pilot (seed 0)
+is about 6 hours of wall time. If an exo step costs twice an ego step, add about 3 GPU-hours per seed. Every run of one seed uses the same code revision, which is recorded with its
 results; run A of experiment 1 is not reused, because it was trained on an earlier revision.
 
 ## Code changes (each behind a flag; defaults keep the authors' behaviour)
@@ -141,11 +164,13 @@ results; run A of experiment 1 is not reused, because it was trained on an earli
 4. `tasks/pretrain_longseq.py`: domain ids in the batch, loss logged per domain, one validation set per domain.
 5. `train.py`: `--dataset egoexo4d_dynpose_longseq` for joint training, and `--test_domain {ego,exo}` to choose
    the test set.
-6. A CPU script for the open checks: clip lengths, rates, translation per second, axis check.
+6. `compare_runs.py` and a per-question dump for DynPose: the video id takes the place of the take, and the
+   type and view columns become optional.
+7. A CPU script for the open checks: clip lengths, rates, translation per second, axis check.
 
 Checks before the first run: the reproduction check with all flags off and with `--domain_token` on (both must
 give 44.81); a one-epoch smoke test of U1; the released exo model on its own test with our loader in long-sequence
-format and native rate (must give 46.3); Z as a sanity row.
+format and native rate (the gap to 46.3 is recorded, see Design item 2); Z as a sanity row.
 
 ## Risks and what we cut first
 - **Exo starts from ego weights.** If U1 trails S-exo but matches E→X, the gap comes from the starting point, not
@@ -155,5 +180,5 @@ format and native rate (must give 46.3); Z as a sanity row.
   record it as a decision.
 - **1,000 exo questions are few.** Small exo differences will not be significant; we say so instead of reading
   them.
-- **If time runs short**, cut in this order: seeds 1 and 2 of E→X, then the resampling ablation, then Z.
-  U0, U1 and both specialists are the experiment and are not cut.
+- **If time runs short**, cut in this order: seeds 1 and 2 of E→X, then the resampling ablation, then Z and Z',
+  then validation altogether. U0, U1, S-ego and S-exo are the experiment and are not cut.
