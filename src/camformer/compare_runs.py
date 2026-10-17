@@ -94,6 +94,9 @@ def main():
         f'bootstrap over seeds and takes, {opts.n_boot} resamples')
   if len(opts.a) == 1 or len(opts.b) == 1:
     print('note: a setup with one seed adds no training-seed variation; the interval covers test sampling only')
+  elif min(len(opts.a), len(opts.b)) < 5:
+    print('note: with fewer than 5 seeds the seed level of the interval is rough and tends to be too narrow;'
+          ' report the per-seed ranges next to it')
   rows = []
   for t, v, m in splits:
     lo, hi = two_level_bootstrap(qa['take'][m].to_numpy(), sa[:, m], sb[:, m], opts.n_boot, rng)
