@@ -33,7 +33,8 @@ The ViPE poses are used for exo throughout: they give the stronger released mode
 against 81,975 after the scale filter; the paper's training count is the ViPE one) and ViPE estimates metric
 depth, which brings the translation scale closer to the Aria data.
 
-Facts checked on the released CSVs (17 Oct): all 1,000 DynPose test questions use validation clips, none use
+Facts checked on the released CSVs (all counts in this note are recomputed by
+`python scripts/ego_exo_facts.py <upstream data_files/>`): all 1,000 DynPose test questions use validation clips, none use
 training clips; but 236 of the 1,379 test videos also have other segments in the training split. This is the
 authors' split and we keep it, so our numbers stay comparable; the report mentions it.
 
@@ -67,7 +68,7 @@ Every change sits behind a flag whose default reproduces the authors' code.
    20 FPS (linear for translation, spherical for rotation), because the positional encoding counts frames, not
    seconds: at native rates one position is 50 ms for ego and 33 ms for exo. **Open:** the released exo model was
    trained at 30 FPS. Before training, compare it at native and resampled rates on validation clips that are not
-   in the test set (5,452 remain) with full retrieval, never on the test. If it loses more than 2 points of
+   in the test set (7,925 remain) with full retrieval, never on the test. If it loses more than 2 points of
    recall at 5, resampling becomes an ablation instead of the default.
 6. **Common axes** (`--exo_to_aria_axes`). Exo poses are turned into the Aria camera frame by a fixed 180°
    rotation about the forward axis (x → −x, y → −y), applied to the camera frame before the relative poses are
