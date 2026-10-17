@@ -3,13 +3,16 @@
 Usage:
     python compare_runs.py --a A_s0.csv [A_s1.csv ...] --b B_s0.csv [B_s1.csv ...] [--metric m2t]
 
-Each CSV is the per-question output of score_mcq.py --out. With several seeds per setup, each question's
-score is its mean over that setup's seeds. For each split (all, physical, procedural, and type x view) the
-script prints the two accuracies, the difference B - A, and a 95% confidence interval from a paired
-bootstrap that resamples takes, not questions: all five options of a question, and many questions, come
-from the same take, so questions are not independent. With one seed per setup it also prints an exact
-McNemar test on the discordant questions. McNemar ignores that clustering and so is too optimistic; the
-bootstrap interval is the number to report.
+Each CSV is the per-question output of score_mcq.py --out, one per training seed. For each split (all,
+physical, procedural, and type x view) the script prints each setup's accuracy (mean over its seeds) and
+per-seed spread, the difference B - A, and a 95% interval from a paired two-level bootstrap: each resample
+draws the seeds of each setup with replacement, then the test takes with replacement. Takes, not questions,
+are resampled because all five options of a question, and many questions, come from the same take.
+
+What the interval covers: test-take sampling, and training-seed variation only as far as the seeds given
+can show it. With one seed per setup it covers test sampling alone and says nothing about whether the
+difference would survive retraining; report it as such. With one seed per setup the script also prints an
+exact McNemar test on the discordant questions, which ignores the clustering by take and is optimistic.
 """
 
 import argparse
@@ -43,14 +46,25 @@ def mcnemar_exact(a, b):
   return min(1.0, p), n01, n10
 
 
-def take_bootstrap(takes, diff, n_boot, rng):
-  """95% interval of mean(diff) resampling takes with replacement."""
+def two_level_bootstrap(takes, sa, sb, n_boot, rng):
+  """95% interval of mean(B) - mean(A), resampling seeds of each setup, then takes, with replacement."""
   codes, uniq = pd.factorize(takes)
-  sums = np.bincount(codes, weights=diff)
   counts = np.bincount(codes).astype(float)
-  idx = rng.integers(0, len(uniq), size=(n_boot, len(uniq)))
-  means = sums[idx].sum(1) / counts[idx].sum(1)
-  return np.percentile(means, [2.5, 97.5])
+  per_take = lambda s: np.stack([np.bincount(codes, weights=r, minlength=len(uniq)) for r in s])
+  ta, tb = per_take(sa), per_take(sb)  # (seeds, takes): correct answers per take and seed
+  t_idx = rng.integers(0, len(uniq), size=(n_boot, len(uniq)))
+  a_idx = rng.integers(0, len(sa), size=(n_boot, len(sa)))
+  b_idx = rng.integers(0, len(sb), size=(n_boot, len(sb)))
+  a = ta[a_idx].mean(1)  # (n_boot, takes)
+  b = tb[b_idx].mean(1)
+  rows = np.arange(n_boot)[:, None]
+  diff = (b[rows, t_idx] - a[rows, t_idx]).sum(1) / counts[t_idx].sum(1)
+  return np.percentile(diff, [2.5, 97.5])
+
+
+def seed_range(s):
+  acc = 100 * s.mean(1)
+  return f'{acc.min():.2f}-{acc.max():.2f}' if len(acc) > 1 else '-'
 
 
 def main():
@@ -77,14 +91,16 @@ def main():
       splits.append((t, v, ((qa['type'] == t) & (qa['view'] == v)).to_numpy()))
 
   print(f'metric {opts.metric} | A: {len(opts.a)} seed(s) | B: {len(opts.b)} seed(s) | '
-        f'bootstrap over takes, {opts.n_boot} resamples')
+        f'bootstrap over seeds and takes, {opts.n_boot} resamples')
+  if len(opts.a) == 1 or len(opts.b) == 1:
+    print('note: a setup with one seed adds no training-seed variation; the interval covers test sampling only')
   rows = []
   for t, v, m in splits:
-    d = b[m] - a[m]
-    lo, hi = take_bootstrap(qa['take'][m].to_numpy(), d, opts.n_boot, rng)
+    lo, hi = two_level_bootstrap(qa['take'][m].to_numpy(), sa[:, m], sb[:, m], opts.n_boot, rng)
     row = {'type': t, 'view': v, 'n': int(m.sum()), 'takes': qa['take'][m].nunique(),
-           'A': 100 * a[m].mean(), 'B': 100 * b[m].mean(), 'B-A': 100 * d.mean(),
-           'ci_lo': 100 * lo, 'ci_hi': 100 * hi}
+           'A': 100 * a[m].mean(), 'A_seeds': seed_range(sa[:, m]),
+           'B': 100 * b[m].mean(), 'B_seeds': seed_range(sb[:, m]),
+           'B-A': 100 * (b[m] - a[m]).mean(), 'ci_lo': 100 * lo, 'ci_hi': 100 * hi}
     if single:
       p, b_only, a_only = mcnemar_exact(sa[0][m], sb[0][m])
       row.update(A_only=a_only, B_only=b_only, mcnemar_p=p)
