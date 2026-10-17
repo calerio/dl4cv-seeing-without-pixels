@@ -32,6 +32,23 @@ go ahead only if B' against A shows all three of: a clearly lower within-take lo
 on the within-take questions from training takes, and at least 1 point more on the procedural test questions.
 Otherwise we report the negative result with these measurements and stop this experiment.
 
+**Gate outcome (18 Oct 2026): passed.** Pilot runs `p1_A_s0` and `p1_Bp_s0` (jobs 704740-704743, code a8fc1ec),
+diagnostics job 705850, comparison with `compare_runs.py` on the per-question test files:
+
+| Criterion | A | B' |
+|---|---|---|
+| Within-take loss on training batches, 8 clips per take | 1.467 | 1.405 |
+| Within-take 5-way MCQ on training takes (m2t) | 60.50 | 61.92 |
+| Procedural test (m2t) | 33.27 | 37.09 |
+| Overall test (m2t) | 44.89 | 47.32 |
+
+The drop in within-take loss is small in absolute terms (4%), but about ten times the change from the released
+model to A (1.473 to 1.467); "clearly lower" was not given a number in advance, so this is our reading. On the
+test, B' minus A is +3.82 points on procedural questions (95% interval over takes +2.50 to +5.18) and +2.43
+overall (+1.25 to +3.48). These intervals cover test sampling only; seeds 1 and 2 decide whether the gain
+survives retraining. The regression check passed on the deployed code before the seed runs were queued
+(job 705870, revision bb5dc84).
+
 ## D2. Checkpoints leave out the frozen CLIP text model (16 Oct 2026)
 
 **Situation.** Each Lightning checkpoint was about 620 MB, and a run keeps two (best and last). Almost all of
