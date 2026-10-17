@@ -85,7 +85,7 @@ number of updates in every run that trains on it: 3,100 ego steps and 1,720 exo 
 |---|---|---|---|---|
 | R. Released | the two released models | none | n/a | Reference rows (44.81 / 46.3) |
 | Z. Zero-shot | released ego | none | n/a | How far the ego model reaches on exo with no exo training |
-| S-ego | released ego | ego | n/a | Ego specialist with the same extra training. Same settings as run A of experiment 1, so A's runs are reused |
+| S-ego | released ego | ego | n/a | Ego specialist with the same extra training. Same settings as run A of experiment 1, but retrained for every seed on the same code revision as U0 and U1, so the comparison does not mix code versions |
 | S-exo | released exo | exo | n/a | Exo specialist with the same extra training |
 | E→X | released ego | exo | n/a | Exo from the ego weights: separates "starting from ego" from "sharing one model" |
 | U0 | released ego | ego + exo | off | One model, no domain information |
@@ -113,7 +113,7 @@ report reads the two comparisons in that order.
   excludes zero on at least one.
 - Anything else is reported as measured, including a negative result.
 
-**Pilot gate.** Seed 0 of S-exo, E→X, U0 and U1 runs first (S-ego seed 0 exists from experiment 1). Seeds 1
+**Pilot gate.** Seed 0 of S-ego, S-exo, E→X, U0 and U1 runs first, all on one code revision. Seeds 1
 and 2 run only if all seed-0 runs finished without errors and U1 is within 5 points of its specialist on both
 tests. Otherwise we stop, report seed 0 with that diagnosis, and move the GPUs to experiment 3.
 
@@ -125,11 +125,12 @@ so 86 exo steps should take at most 3 min plus a short validation (**Open:** tim
 |---|---|
 | U0, U1 | about 4 h each (20 × 241 steps plus two validations per epoch) |
 | S-exo, E→X | about 1.5 h each |
-| S-ego | reused from experiment 1 |
+| S-ego | about 3 h (20 ego epochs) |
 | Tests (about 3 min each) and Z | under 1 h in all |
 
-About 11 GPU-hours per seed, 33 for three seeds: about 17 hours of wall time on our 2 GPUs. The pilot (seed 0)
-is about 6 hours of wall time.
+About 14 GPU-hours per seed, 42 for three seeds: about 21 hours of wall time on our 2 GPUs. The pilot (seed 0)
+is about 7 hours of wall time. Every run of one seed uses the same code revision, which is recorded with its
+results; run A of experiment 1 is not reused, because it was trained on an earlier revision.
 
 ## Code changes (each behind a flag; defaults keep the authors' behaviour)
 1. `datasets/dynpose.py`: an option to return the long-sequence sample format (12 columns, with zeros for the
