@@ -2,14 +2,25 @@
 
 What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 
+## Sat 17 Oct 2026
+- The HPC datacenter has been unreachable since the evening of 16 Oct (cable cut); the pilot results are pending.
+- Changes now go through pull requests, reviewed against [`REVIEW.md`](REVIEW.md). Added a regression check that re-scores the released checkpoint (`scripts/slurm/check_reproduction.sh`).
+- Added `compare_runs.py`: a paired comparison of two setups with a bootstrap over seeds and takes.
+- Wrote the design of the single ego+exo model ([`docs/ego_exo.md`](docs/ego_exo.md)), with its data counts recomputed by `scripts/ego_exo_facts.py`.
+
+**Next:** when the cluster is back, score the pilot, run the regression check, then write the ego+exo code.
+
 ## Fri 16 Oct 2026
 - Checked the Ego-Exo4D eye-gaze recordings against the released pose clips: gaze is at 10 Hz, starts within 0.1 s of the camera trajectory, and covers every validation and test clip and 99.8% of training clips. No further download is needed. Details in [`results/gaze_check.md`](results/gaze_check.md).
 - Checkpoints now leave out the frozen CLIP model: 12 MB instead of 620 MB, tested across a resumed run ([`docs/decisions.md`](docs/decisions.md), D2).
 - Found that every question in the Ego-Exo4D test offers five options from the same recording, which motivates training with same-take negatives. Design in [`docs/hard_negatives.md`](docs/hard_negatives.md).
-- Added a batch sampler that groups clips of one take (`--same_take_k`) and a mask that stops identical captions from counting as negatives (`--mask_dup_text`); both off by default.
+- Added a batch sampler that groups clips of one take (`--same_take_k`), a mask that stops clips with the same main verb from counting as negatives (`--neg_mask`), a within-take loss term (`--within_take_weight`) and `--seed`; all off by default.
+- Added a scorer that reproduces Table 2 of the paper per activity type and visibility (`score_mcq.py`), and measured on the released model how much same-take negatives weigh in the loss (decision D3).
 - Started two 20-epoch fine-tuning runs from the released checkpoint: baseline (A) and same-take negatives with the mask (B). Tests are queued to run when each finishes.
 
-**Next:** score A and B; then run C (mask only).
+- Started a seeded pilot pair (baseline and same-take negatives with the within-take term), with a pass/fail rule fixed in advance (D3).
+
+**Next:** score the pilot and apply the D3 rule.
 
 ## Thu 15 Oct 2026
 - Ran the released Ego-Exo4D checkpoint on the test set (one GPU, under three minutes): 44.81% motion-to-text and 47.18% text-to-motion, identical to the released features and the paper. Details in [`results/reproduction.md`](results/reproduction.md).
