@@ -57,6 +57,10 @@ def test_resample():
   assert np.allclose(out[:, 0], t20) and np.allclose(out[:, 1], 2 * t20)
   ang = Rotation.from_quat(out[:, 3:]).as_euler('zyx', degrees=True)[:, 0]
   assert np.allclose(ang, 90 * t20, atol=1e-6)
+  # every real clip length (97 to 256 frames) must resample without stepping past the clip end
+  for n in range(2, 300):
+    p = np.concatenate([np.zeros((n, 3)), Rotation.identity(n).as_quat()], 1)
+    resample_poses(p, 30.0, 20.0)
 
 
 def test_axes():

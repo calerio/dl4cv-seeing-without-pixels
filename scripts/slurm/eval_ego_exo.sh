@@ -24,7 +24,7 @@ export DYNPOSE_DATA_DIR="$CAMFORMER_DATA"
 export NYMERIA_DATA_DIR="$CAMFORMER_DATA"
 export TMPDIR=~/tmp
 
-set -e
+set -eo pipefail
 echo "code revision $(cat REVISION 2>/dev/null || echo unknown)"
 dataset=$1 run=$2
 dir=~/data/logs/$dataset/$run
@@ -45,16 +45,16 @@ PY
 )
 echo "flags: $flags"
 
+log=$(mktemp); trap 'rm -f "$log"' EXIT
 for domain in ego exo; do
-  start=$(mktemp)
   python train.py --dataset egoexo4d_dynpose_longseq --test_domain $domain --test --scenario all \
-      --num_gpus 1 --batch_size 1000 --ckpt "$ckpt" $flags
+      --num_gpus 1 --batch_size 1000 --ckpt "$ckpt" $flags | tee "$log"
+  # The directory this job wrote, from its own log.
+  d=$(sed -n 's/^Saved features.* to \(final_data\/.*\)$/\1/p' "$log" | tail -1)
+  [ -n "$d" ] || { echo "FAIL: no $domain test features written"; exit 1; }
   if [ $domain = ego ]; then
-    f=$(find final_data/retrieval_features/ours/egoexo4d_dynpose_longseq -path "*/$run/*" -name frames.pt -newer "$start" | head -1)
-    python score_mcq.py "$(dirname "$f")" --out "$dir/test_questions_ego.csv"
+    python score_mcq.py "$d" --out "$dir/test_questions_ego.csv"
   else
-    f=$(find final_data/retrieval_features/ours/egoexo4d_dynpose_longseq_exo -path "*/$run/*" -name frames.pt -newer "$start" | head -1)
-    python score_exo_mcq.py "$(dirname "$f")" --out "$dir/test_questions_exo.csv"
+    python score_exo_mcq.py "$d" --out "$dir/test_questions_exo.csv"
   fi
-  rm -f "$start"
 done

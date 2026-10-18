@@ -54,7 +54,8 @@ def resample_poses(poses7d, src_hz, dst_hz):
   if n < 2 or src_hz == dst_hz:
     return poses7d
   t_src = np.arange(n) / src_hz
-  t_dst = np.arange(0.0, t_src[-1] + 1e-9, 1.0 / dst_hz)
+  # The last step can overshoot the clip end by a rounding error; clamp it.
+  t_dst = np.minimum(np.arange(0.0, t_src[-1] + 1e-9, 1.0 / dst_hz), t_src[-1])
   trans = np.stack([np.interp(t_dst, t_src, poses7d[:, i]) for i in range(3)], axis=1)
   rots = Slerp(t_src, Rotation.from_quat(poses7d[:, 3:]))(t_dst).as_quat()
   return np.concatenate([trans, rots], axis=1)
