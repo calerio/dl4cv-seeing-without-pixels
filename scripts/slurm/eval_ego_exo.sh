@@ -12,7 +12,9 @@
 # Tests the last checkpoint of an experiment-2 run on both test sets (Ego-Exo4D and DynPose), with the
 # model and input flags the run was trained with (read from its args.json), and writes one row per
 # question for compare_runs.py: <run dir>/test_questions_ego.csv and test_questions_exo.csv.
-# Usage, from ~/dl4cv/camformer:  sbatch ~/dl4cv/eval_ego_exo.sh <dataset of the run> <job_name of the run>
+# Usage, from ~/dl4cv/camformer:
+#   sbatch ~/dl4cv/eval_ego_exo.sh <dataset of the run> <job_name of the run> ["ego exo" | ego | exo]
+# Give "ego" for runs that never saw exo inputs (S-ego): their args.json has no exo input flags.
 
 module load sw/miniconda3
 eval "$(conda shell.bash hook)"
@@ -26,7 +28,7 @@ export TMPDIR=~/tmp
 
 set -eo pipefail
 echo "code revision $(cat REVISION 2>/dev/null || echo unknown)"
-dataset=$1 run=$2
+dataset=$1 run=$2 domains=${3:-ego exo}
 dir=~/data/logs/$dataset/$run
 mkdir -p ~/dl4cv/run_ckpts
 ckpt=~/dl4cv/run_ckpts/$run.ckpt
@@ -46,7 +48,7 @@ PY
 echo "flags: $flags"
 
 log=$(mktemp); trap 'rm -f "$log"' EXIT
-for domain in ego exo; do
+for domain in $domains; do
   python train.py --dataset egoexo4d_dynpose_longseq --test_domain $domain --test --scenario all \
       --num_gpus 1 --batch_size 1000 --ckpt "$ckpt" $flags | tee "$log"
   # The directory this job wrote, from its own log.

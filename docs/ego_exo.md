@@ -25,7 +25,7 @@ interfere. The runs below separate the two effects.
 | Pose encoding | relative to the middle frame, 6D rotation, plus a gravity token (`rel9d_grav`) | same without gravity (`rel9d`); gravity "is omitted when processing poses estimated from monocular videos" (supp. 2.3) |
 | Clip | a context window of up to 8 s around the narration; only the labelled sub-window is pooled (`tasks/pretrain_longseq.py`) | the whole short clip, mean-pooled (`tasks/pretrain.py`) |
 | Translation | metric (SLAM) | scale from the estimator; clips with `pose_scale` ≥ 20 are dropped |
-| Axes | Aria camera frame: x left, y up, z forward (supp. 2.3) | not stated; OpenCV is x right, y down, z forward |
+| Axes | supp. 2.3 says x left, y up, z forward; the stored trajectories measure x down, y left, z forward (Design 6) | not stated; ViPE's first pose is the identity and its vertical axis is y (Design 6) |
 | Test | 7,079 five-way questions, all options from one take | 1,000 five-way questions (`samevideo_test5000`); in 902 of them one distractor comes from the answer's video |
 | Released result (motion-to-text) | 44.81 (`egoexo4d_dur8.pt`) | ViPE 46.3 (`dynpose100k_vipe.pt`), original 36.2 in Table 4 (39.2 from the released features) |
 
@@ -53,7 +53,9 @@ Every change sits behind a flag whose default reproduces the authors' code.
    long-sequence task applies LayerNorm and the projection to each frame and then pools over the window
    (`tasks/pretrain_longseq.py`, lines 137-141). LayerNorm is not linear, so the two give different embeddings
    from the same weights. Check before training: run the released exo model through the long-sequence path on
-   its own test and record the gap to 46.3. This is a measurement, not a gate.
+   its own test and record the gap to 46.3. This is a measurement, not a gate. **Measured 18 Oct:** 46.20
+   (job 706944) against 46.30 through the authors' exo task (job 706967, which also confirms our copy of
+   their path): a gap of 0.1 points, one question.
 3. **No gravity for exo.** The released ego model was trained with gravity dropout: half of the time its
    gravity token was replaced by a learned "gravity unknown" token (`learnable_gravity` in `cm_encoder.py`).
    Exo clips always get that learned token. This follows the paper's rule (no gravity from monocular video)
@@ -69,18 +71,26 @@ Every change sits behind a flag whose default reproduces the authors' code.
    seconds: at native rates one position is 50 ms for ego and 33 ms for exo. **Open:** the released exo model was
    trained at 30 FPS. Before training, compare it at native and resampled rates on validation clips that are not
    in the test set (7,925 remain) with full retrieval, never on the test. If it loses more than 2 points of
-   recall at 5, resampling becomes an ablation instead of the default.
-6. **Common axes** (`--exo_to_aria_axes`). Exo poses are turned into the Aria camera frame by a fixed 180°
-   rotation about the forward axis (x → −x, y → −y), applied to the camera frame before the relative poses are
-   computed. The authors did exactly this when they fed video-estimated poses to the Aria-trained model
-   (supp. 2.3). **Open:** which frame ViPE and DynPose use. Check on the cluster: in upright handheld video the
-   camera's "up" axis should point against gravity in the estimator's world frame; compare the mean camera y
-   axis with the estimator's stated world up. Note also that our copy of the Pi3 loader converts nothing,
-   so either the Pi3 files are stored already converted or the conversion is missing there; the files tell.
-7. **Translation scale.** No normalisation in the main runs. **Open:** compare the distribution of translation
-   per second (median and 90th percentile) between ego training clips and resampled ViPE clips on the cluster
-   (CPU job). If the medians differ by more than a factor of 3, add `--exo_translation_scale` (one constant from
-   the ratio of medians, fixed before training) and record it as a decision.
+   recall at 5, resampling becomes an ablation instead of the default. **Measured 18 Oct** (jobs 706959,
+   706960, 706966; `exo_test.sh ... --exo_eval_split val_nontest`, then `eval_full_retrieval.py`): recall at 5
+   is 0.67% native and 0.56% at 20 FPS. Over 7,925 clips recall at 5 is below 1% either way, so the 2-point
+   rule could not have failed and says little. On the same clips, a 5-way choice with random distractors
+   (chance 20%) gives 50.42 native and 49.38 at 20 FPS: one point lost. Resampling stays the default; the
+   rule's metric is reported as chosen badly.
+6. **Common axes** (`--exo_to_aria_axes`). Exo camera frames are turned into the ego camera frame before the
+   relative poses are computed. **Checked 18 Oct** (`exo_checks.py`, job 706937, 2,000 training clips per domain):
+   - Ego, as stored: the camera x axis points down (mean world-up component −0.81; y +0.11, z −0.19), and ego
+     motion lies mostly along ±y and ±z (x carries 12% of it). So the stored frame is x down, y left,
+     z forward, not the "x left, y up" of supp. 2.3.
+   - Exo (ViPE): the first pose is the identity (world = first camera); motion lies mostly along ±z and ±x
+     (y carries 13%), with +z more often than −z (32% against 20%). So y is vertical and z forward, as in the
+     OpenCV convention (x right, y down) that we assume; without gravity the sign of y cannot be measured.
+   - Hence the conversion is a 90° turn about z (ego x = OpenCV y, ego y = −OpenCV x), not the 180° turn the
+     earlier draft took from supp. 2.3. Pi3 files are not used here; their first poses are not the identity,
+     so they come in some other world frame, left as found.
+7. **Translation scale.** No normalisation in the main runs. Rule: if the median speeds differ by more than a
+   factor of 3, add one scale constant. **Checked 18 Oct** (job 706937): per-clip median speed, ego 0.31 m/s
+   (p90 1.12), exo 0.19 (p90 0.95); ratio 1.6. No scale constant.
 8. **Batches stay within one domain.** Each step draws a full batch of 1,024 from one domain. A mixed batch would
    pit ego clips against exo captions, which are trivially easy to rule out, while both tests are within one
    domain. Each epoch runs every ego batch (155) and every exo batch (86) once, in a random order fixed by the
@@ -140,20 +150,19 @@ and 2 run only if all seed-0 runs finished without errors and U1 is within 5 poi
 tests. Otherwise we stop, report seed 0 with that diagnosis, and move the GPUs to experiment 3.
 
 ## Compute
-Measured: one ego epoch is about 5.8 min of training and 2.5 min of validation on one A100. The cost of an exo
-step is not known: whole ViPE clips at 30 FPS may be longer than ego windows, and attention cost grows with the
-square of the length. **Open:** time it in the smoke test. The table assumes an exo step costs about as much as
-an ego step.
+Measured in the smoke test of U1 (job 706961, one epoch): a median of 2.7 s per ego step and 2.8 s per exo step
+(compute only), so an exo step costs about as much as an ego step. One joint epoch (155 ego + 86 exo steps)
+takes about 11 min of training; a validation pass on both domains about 4 min.
 
 | Run | Per seed |
 |---|---|
-| U0, U1 | about 3 h each (20 × 241 steps, validation every 5 epochs) |
-| S-exo, E→X | about 1.2 h each |
-| S-ego | about 2 h (20 ego epochs) |
+| U0, U1 | about 4 h each (20 joint epochs, validation every 5 epochs) |
+| S-exo, E→X | about 1.5 h each |
+| S-ego | about 2.5 h (20 ego epochs) |
 | Tests (about 3 min each), Z and Z' | under 1 h in all |
 
-About 12 GPU-hours per seed, 36 for three seeds: about 18 hours of wall time on our 2 GPUs. The pilot (seed 0)
-is about 6 hours of wall time. If an exo step costs twice an ego step, add about 3 GPU-hours per seed. Every run of one seed uses the same code revision, which is recorded with its
+About 14 GPU-hours per seed, 42 for three seeds: about 21 hours of wall time on our 2 GPUs. The pilot (seed 0)
+is about 7 hours of wall time. Every run of one seed uses the same code revision, which is recorded with its
 results; run A of experiment 1 is not reused, because it was trained on an earlier revision.
 
 ## Code changes (each behind a flag; defaults keep the authors' behaviour)
@@ -169,16 +178,26 @@ results; run A of experiment 1 is not reused, because it was trained on an earli
    type and view columns become optional.
 7. A CPU script for the open checks: clip lengths, rates, translation per second, axis check.
 
-Checks before the first run: the reproduction check with all flags off and with `--domain_token` on (both must
-give 44.81); a one-epoch smoke test of U1; the released exo model on its own test with our loader in long-sequence
-format and native rate (the gap to 46.3 is recorded, see Design item 2); Z as a sanity row.
+Checks before the first run, all done on 18 Oct:
+
+| Check | Job | Result |
+|---|---|---|
+| Unit tests (`test_ego_exo.py`: token at zero changes nothing, gravity mask, resampling, axes, sampler) | 706958 | pass |
+| Reproduction check, all flags off | 706935 | 44.81 / 33.61, OK |
+| Reproduction check with `--domain_token` | 706936 | 44.81 / 33.61, OK |
+| Released exo model through the authors' exo task (our copy of their path) | 706967 | 46.30 / 48.90, matches |
+| Released exo model through the long-sequence path, native rate | 706944 | 46.20 / 48.30 (gap 0.1) |
+| Pose rate on validation clips outside the test (Design 5) | 706959, 706960, 706966 | resampling kept |
+| CPU checks: lengths, rate, speed, axes (Design 6, 7) | 706937 | see Design 6 and 7 |
+| Z: released ego model on the DynPose test (20 FPS, ego axes) | 706968 | 26.30 / 25.40 (chance 20) |
+| Smoke test of U1, one epoch | 706961 | runs; both validation sets logged; timing above |
 
 ## Risks and what we cut first
 - **Exo starts from ego weights.** If U1 trails S-exo but matches E→X, the gap comes from the starting point, not
   from sharing; the report says so rather than claiming sharing hurts.
-- **Different clip lengths.** Exo clips are whole short videos; ego windows are up to 8 s. **Open:** the exo
-  length distribution (CPU check). If exo clips are much longer than 8 s at 20 FPS, crop to the centre 8 s and
-  record it as a decision.
+- **Different clip lengths.** Exo clips are whole short videos; ego windows are up to 8 s. **Checked 18 Oct**
+  (job 706937): exo clips are 3.8 to 7.6 s (p10 to p90; median 5.0 s, at most 256 frames = 8.5 s), every
+  video frame (index step 1). No cropping.
 - **1,000 exo questions are few.** Small exo differences will not be significant; we say so instead of reading
   them.
 - **If time runs short**, cut in this order: seeds 1 and 2 of E→X, then the resampling ablation, then Z and Z',
