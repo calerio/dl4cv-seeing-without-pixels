@@ -50,6 +50,7 @@ class CameraPoseSeqEncoder(nn.Module):
       pooling: str = "mean",
       use_scenario_label: bool = False,
       use_learnable_gravity: bool = False,
+      domain_token: bool = False,
   ):
     super().__init__()
     self.encode_pose = encode_pose
@@ -92,6 +93,13 @@ class CameraPoseSeqEncoder(nn.Module):
     if self.use_scenario_label:
       self.label_embed = nn.Embedding(8, d_model)
 
+    # One learned vector per domain (0 = ego, 1 = exo), added to every input token. Zero at the start, so a
+    # model loaded from a checkpoint without it computes exactly what the checkpoint did.
+    self.domain_token = domain_token
+    if self.domain_token:
+      self.domain_embed = nn.Embedding(2, d_model)
+      nn.init.zeros_(self.domain_embed.weight)
+
     self.norm = nn.LayerNorm(d_model)
     if self.output_dim != d_model:
       self.out_proj = nn.Linear(d_model, self.output_dim)
@@ -105,6 +113,8 @@ class CameraPoseSeqEncoder(nn.Module):
       lengths,
       scenario_labels=None,
       return_middle_h=False,
+      has_gravity=None,
+      domain_ids=None,
   ):
     if self.encode_pose == 11:
       x, gravity_vecs = x_padded[:, :, :9], x_padded[:, 0:1, 9:]
@@ -121,6 +131,11 @@ class CameraPoseSeqEncoder(nn.Module):
             self.learnable_gravity.expand(h1.size(0), 1, -1)
             if self.use_learnable_gravity
             else h2
+        )
+      if has_gravity is not None:
+        # Clips without a measured gravity vector (exo) always get the learned "gravity unknown" token.
+        h2 = torch.where(
+            has_gravity.view(-1, 1, 1), h2, self.learnable_gravity.expand(h1.size(0), 1, -1)
         )
       h = torch.cat([h2, h1], dim=1)
       first_col = torch.zeros(
@@ -142,6 +157,9 @@ class CameraPoseSeqEncoder(nn.Module):
           ],
           dim=1,
       )
+
+    if self.domain_token and domain_ids is not None:
+      h = h + self.domain_embed(domain_ids).unsqueeze(1)
 
     h = h + self.pos_table[:, : h.size(1)]
     h = self.dropout(h)

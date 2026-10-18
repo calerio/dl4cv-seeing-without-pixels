@@ -28,8 +28,36 @@ import pickle
 
 import numpy as np
 import pandas as pd
+from scipy.spatial.transform import Rotation, Slerp
 import torch
 from utils.dataset_utils import matrix_to_pose7d, transform_camera_pose, w2c_to_c2w
+
+# Frame rate of the stored poses (supp. 2.2): ViPE gives one pose per video frame at 30 FPS; the dataset's
+# own poses are at 12 FPS.
+NATIVE_FPS = {'vipe': 30.0, 'original': 12.0}
+# OpenCV camera axes (x right, y down, z forward) to the ego camera frame as stored in the Ego-Exo4D
+# trajectories: x down, y left, z forward. Measured with exo_checks.py (the ego camera x axis has a mean
+# world-up component of -0.81, y +0.11, z -0.19), so a 90-degree turn about z, not the 180-degree turn that
+# supp. 2.3 describes for its (x left, y up) frame. Right-multiplying camera-to-world matrices by this maps
+# the columns: ego x = OpenCV y, ego y = -OpenCV x, ego z = OpenCV z.
+_OPENCV_TO_ARIA = np.array(
+    [[0.0, -1.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+)
+
+
+def resample_poses(poses7d, src_hz, dst_hz):
+  """(N, 7) poses at src_hz -> poses at dst_hz over the same time span.
+
+  Translation is interpolated linearly and rotation spherically.
+  """
+  n = len(poses7d)
+  if n < 2 or src_hz == dst_hz:
+    return poses7d
+  t_src = np.arange(n) / src_hz
+  t_dst = np.arange(0.0, t_src[-1] + 1e-9, 1.0 / dst_hz)
+  trans = np.stack([np.interp(t_dst, t_src, poses7d[:, i]) for i in range(3)], axis=1)
+  rots = Slerp(t_src, Rotation.from_quat(poses7d[:, 3:]))(t_dst).as_quat()
+  return np.concatenate([trans, rots], axis=1)
 
 # Packaged metadata CSVs shipped alongside this module (if present).
 _PKG_DATA_FILES_DIR = os.path.join(
@@ -69,6 +97,14 @@ class DynPoseCamTextPair(torch.utils.data.Dataset):
     self.sample_rate = args.sample_rate if args is not None else 1
     self.mode = mode
     self.pose_source = 'original' if args is None else args.pose_source
+    # Experiment 2 options (all off by default, which is the authors' exo setup):
+    # longseq: samples in the Ego-Exo4D long-sequence format, the labelled window being the whole clip.
+    self.longseq = args is not None and getattr(args, 'exo_longseq', False)
+    self.resample_hz = 0.0 if args is None else getattr(args, 'exo_resample_hz', 0.0)
+    self.to_aria_axes = args is not None and getattr(args, 'exo_to_aria_axes', False)
+    # Test split: the 5-way test (default) or the validation clips that are not in the test (for choices
+    # that must not be made on the test).
+    self.eval_split = 'test' if args is None else getattr(args, 'exo_eval_split', 'test')
     assert self.pose_source in [
         'original',
         'vipe',
@@ -78,14 +114,21 @@ class DynPoseCamTextPair(torch.utils.data.Dataset):
     self.approx_max_chars = 300
     print(
         f'DynPose: encode_pose={self.encode_pose},'
-        f' sample_rate={self.sample_rate}, pose_source={self.pose_source}'
+        f' sample_rate={self.sample_rate}, pose_source={self.pose_source},'
+        f' longseq={self.longseq}, resample_hz={self.resample_hz},'
+        f' to_aria_axes={self.to_aria_axes}'
     )
     self.build_dataset()
 
   def build_dataset(self):
     # Test = the 5-way MCQ set (samevideo_test5000); train/val use the full splits.
     fn = 'samevideo_test5000' if self.mode == 'test' else f'{self.mode}_v1'
+    if self.mode == 'test' and self.eval_split == 'val_nontest':
+      fn = 'val_v1'
     df = pd.read_csv(_resolve_csv(f'metadata_{fn}.csv'))
+    if self.mode == 'test' and self.eval_split == 'val_nontest':
+      test_uids = set(pd.read_csv(_resolve_csv('metadata_samevideo_test5000.csv'))['uid'])
+      df = df[~df['uid'].isin(test_uids)].reset_index(drop=True)
     if self.pose_source == 'vipe':
       df = df[df['vipe_pose_path'].notnull()].reset_index(drop=True)
     col_name = (
@@ -110,8 +153,22 @@ class DynPoseCamTextPair(torch.utils.data.Dataset):
           _DEFAULT_DATA_DIR, self.df.iloc[idx]['vipe_pose_path']
       )
       poses = np.load(pose_path)['data']  # (N, 4, 4)
+    if self.to_aria_axes:
+      bottom = np.tile([[[0, 0, 0, 1.0]]], (len(poses), 1, 1))
+      poses = np.concatenate([poses[:, :3, :], bottom], axis=1) @ _OPENCV_TO_ARIA  # camera-to-world
     poses = matrix_to_pose7d(poses)
+    if self.resample_hz > 0:
+      poses = resample_poses(poses, NATIVE_FPS[self.pose_source], self.resample_hz)
     poses = poses[:: self.sample_rate]
-    poses = transform_camera_pose(poses, self.encode_pose)
-    caption = self.df.iloc[idx]['description_text']
-    return poses, caption[: self.approx_max_chars]
+    row = self.df.iloc[idx]
+    caption = row['description_text'][: self.approx_max_chars]
+    if not self.longseq:
+      poses = transform_camera_pose(poses, self.encode_pose)
+      return poses, caption
+    # Long-sequence format. The ego encoding (11) carries a gravity vector; exo clips have none, so its
+    # three columns are zero and the model uses its learned "gravity unknown" token for them.
+    poses = transform_camera_pose(poses, 2 if self.encode_pose == 11 else self.encode_pose)
+    if self.encode_pose == 11:
+      poses = np.hstack([poses, np.zeros((len(poses), 3))])
+    # [t0, t1, caption, video id (plays the role of the take), domain 1 = exo]; scenario label -1 (none).
+    return poses, [0, len(poses), caption, row['video_uid'], 1], -1, []

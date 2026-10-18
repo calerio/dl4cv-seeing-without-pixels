@@ -82,7 +82,7 @@ def main():
   ego = pd.read_csv(os.path.join(EGO_CSV, 'train_v2.csv'))
   ego['take_name'] = ego['save_id'].str.rsplit('_', n=2).str[0]
   ego_rows = ego.sample(n=min(opts.n, len(ego)), random_state=opts.seed).sort_values('take_name')
-  ego_speed, up_dots = [], {0: [], 1: [], 2: []}
+  ego_speed, up_dots, ego_dirs = [], {0: [], 1: [], 2: []}, []
   cache = {}
   for _, r in ego_rows.iterrows():
     f = os.path.join(EGO_TRAJ, r['take_name'] + '.npz')
@@ -96,11 +96,17 @@ def main():
       continue
     ego_speed.append(np.median(speeds(w[:, :3], EGO_FPS)))
     R = Rotation.from_quat(w[:, 3:]).as_matrix()
+    d = R[0].T @ (w[-1, :3] - w[0, :3])  # net motion in the first camera's frame (if quats are camera-to-world)
+    if np.linalg.norm(d) > 0.3:
+      ego_dirs.append(d / np.linalg.norm(d))
     for a in range(3):
       up_dots[a].append(R[:, 2, a].mean())  # camera axis a, its world-z component
   print(f'[ego] {len(ego_speed)} training windows (8 s around the narration)')
   print(f'  camera x / y / z axis, mean world-up component: '
         f'{np.mean(up_dots[0]):.3f} / {np.mean(up_dots[1]):.3f} / {np.mean(up_dots[2]):.3f}')
+  ego_dirs = np.array(ego_dirs)
+  print(f'  {len(ego_dirs)} windows moving > 0.3 m: net motion in the first camera frame, mean of unit vectors '
+        f'{ego_dirs.mean(0).round(3)}; share with +z dominant {np.mean(ego_dirs[:, 2] > np.abs(ego_dirs[:, :2]).max(1)):.3f}')
 
   ego_speed, exo_speed = np.array(ego_speed), np.array(exo_speed)
   print('[speed] per-clip median translation speed (units per second)')

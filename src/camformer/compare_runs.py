@@ -26,6 +26,10 @@ KEYS = ['question', 'take', 'type', 'view']
 
 def load(paths, metric):
   runs = [pd.read_csv(p) for p in paths]
+  for r in runs:  # the DynPose files (score_exo_mcq.py) have no type or view
+    for k in ('type', 'view'):
+      if k not in r:
+        r[k] = 'all'
   base = runs[0][KEYS]
   for p, r in zip(paths, runs):
     if not r[KEYS].equals(base):
@@ -85,7 +89,7 @@ def main():
   rng = np.random.default_rng(opts.seed)
 
   splits = [('all', 'all', np.ones(len(qa), bool))]
-  for t in sorted(qa['type'].unique()):
+  for t in sorted(set(qa['type']) - {'all'}):
     splits.append((t, 'all', (qa['type'] == t).to_numpy()))
     for v in sorted(qa['view'].unique()):
       splits.append((t, v, ((qa['type'] == t) & (qa['view'] == v)).to_numpy()))

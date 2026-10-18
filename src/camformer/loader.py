@@ -16,6 +16,7 @@
 from datasets.dynpose import DynPoseCamTextPair
 from datasets.egoexo4d_pretrain import EgoExo4DCameraPoseLongSeqForPretraining
 from datasets.nymeria import NymeriaCamMotionTextPair
+import copy
 import random
 
 import torch
@@ -69,6 +70,38 @@ class SameTakeBatchSampler(torch.utils.data.Sampler):
     return self.num_batches
 
 
+class DomainBatchSampler(torch.utils.data.Sampler):
+  """Full batches drawn from one domain at a time, for joint ego + exo training.
+
+  sizes: number of samples of each domain, laid out one after the other (as in ConcatDataset). Each epoch
+  the samples of every domain are shuffled and cut into full batches (drop_last), and all batches of all
+  domains are visited once in a shuffled order. Uses Python's random module, seeded by --seed.
+  """
+
+  def __init__(self, sizes, batch_size):
+    self.batch_size = batch_size
+    self.offsets = [sum(sizes[:i]) for i in range(len(sizes))]
+    self.sizes = list(sizes)
+
+  def __iter__(self):
+    batches = []
+    for off, n in zip(self.offsets, self.sizes):
+      idx = random.sample(range(off, off + n), n)
+      batches += [idx[b * self.batch_size : (b + 1) * self.batch_size] for b in range(n // self.batch_size)]
+    random.shuffle(batches)
+    return iter(batches)
+
+  def __len__(self):
+    return sum(n // self.batch_size for n in self.sizes)
+
+
+def exo_args(args):
+  """Copy of args for the DynPose part of a long-sequence run."""
+  a = copy.copy(args)
+  a.exo_longseq = True
+  return a
+
+
 def pose_text_collate(batch):
   """Flat (trajectory, text) collate for the base pretraining task.
 
@@ -116,10 +149,42 @@ def longseq_pose_text_collate(batch):
   )
 
 
+def domain_ids(text_list):
+  """Domain of each sample of a long-sequence batch: 0 = ego (4-item windows), 1 = exo."""
+  return torch.tensor([t[4] if len(t) > 4 else 0 for t in text_list], dtype=torch.long)
+
+
 def create_loader(args, mode):
   if args.dataset == 'egoexo4d_pretrain_longseq':
     dataset = EgoExo4DCameraPoseLongSeqForPretraining(args, mode)
     collate_fn = longseq_pose_text_collate
+  elif args.dataset == 'dynpose_longseq':
+    dataset = DynPoseCamTextPair(exo_args(args), mode)
+    collate_fn = longseq_pose_text_collate
+  elif args.dataset == 'egoexo4d_dynpose_longseq':
+    collate_fn = longseq_pose_text_collate
+    if mode == 'test':
+      dataset = (
+          DynPoseCamTextPair(exo_args(args), mode)
+          if args.test_domain == 'exo'
+          else EgoExo4DCameraPoseLongSeqForPretraining(args, mode)
+      )
+    else:
+      parts = [EgoExo4DCameraPoseLongSeqForPretraining(args, mode), DynPoseCamTextPair(exo_args(args), mode)]
+      if mode == 'val':  # one validation loader per domain: 0 = ego, 1 = exo
+        return [
+            torch.utils.data.DataLoader(
+                d, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn,
+                num_workers=args.num_workers,
+            )
+            for d in parts
+        ]
+      return torch.utils.data.DataLoader(
+          torch.utils.data.ConcatDataset(parts),
+          batch_sampler=DomainBatchSampler([len(d) for d in parts], args.batch_size),
+          collate_fn=collate_fn,
+          num_workers=args.num_workers,
+      )
   elif args.dataset == 'dynpose_pretrain':
     dataset = DynPoseCamTextPair(args, mode)
     collate_fn = pose_text_collate
