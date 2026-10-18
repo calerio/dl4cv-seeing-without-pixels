@@ -37,6 +37,14 @@ def pct(x):
   return f'median {np.median(x):.3f}, p10 {np.percentile(x, 10):.3f}, p90 {np.percentile(x, 90):.3f}'
 
 
+def axis_shares(dirs):
+  """Share of unit vectors whose largest component is +x, -x, +y, -y, +z, -z."""
+  dirs = np.asarray(dirs)
+  i = np.abs(dirs).argmax(1)
+  sign = np.sign(dirs[np.arange(len(dirs)), i])
+  return ' '.join(f'{np.mean((i == a) & (sign == sg)):.2f}' for a in range(3) for sg in (1, -1))
+
+
 def speeds(pos, fps):
   return np.linalg.norm(np.diff(pos, axis=0), axis=1) * fps
 
@@ -73,9 +81,7 @@ def main():
   print(f'  first pose differs from identity by at most: {pct(first_dev)}')
   dirs = np.array(dirs)
   print(f'  net motion direction in the first camera frame (mean of unit vectors): {dirs.mean(0).round(3)}')
-  print(f'  share of clips moving with +z / -z larger than |x|,|y|: '
-        f'{np.mean((dirs[:, 2] > np.abs(dirs[:, :2]).max(1))):.3f} / '
-        f'{np.mean((-dirs[:, 2] > np.abs(dirs[:, :2]).max(1))):.3f}')
+  print(f'  dominant axis of the net motion, shares of +x -x +y -y +z -z: {axis_shares(dirs)}')
   print(f'  mean camera y axis in the first camera frame: {np.mean(cam_y_world, 0).round(3)}')
 
   # Ego: speed over the labelled windows, and the camera axes against world up.
@@ -106,7 +112,8 @@ def main():
         f'{np.mean(up_dots[0]):.3f} / {np.mean(up_dots[1]):.3f} / {np.mean(up_dots[2]):.3f}')
   ego_dirs = np.array(ego_dirs)
   print(f'  {len(ego_dirs)} windows moving > 0.3 m: net motion in the first camera frame, mean of unit vectors '
-        f'{ego_dirs.mean(0).round(3)}; share with +z dominant {np.mean(ego_dirs[:, 2] > np.abs(ego_dirs[:, :2]).max(1)):.3f}')
+        f'{ego_dirs.mean(0).round(3)}')
+  print(f'  dominant axis of that motion, shares of +x -x +y -y +z -z: {axis_shares(ego_dirs)}')
 
   ego_speed, exo_speed = np.array(ego_speed), np.array(exo_speed)
   print('[speed] per-clip median translation speed (units per second)')
