@@ -23,7 +23,15 @@ def recalls(feature_dir):
     rank = (s > s.diag()[:, None]).sum(1)
     for k in (1, 5, 10):
       out[f'{name}_r{k}'] = 100 * (rank < k).float().mean().item()
-  return len(frames), out
+  # 5-way choice with four random other clips as distractors (fixed seed), every clip once as the answer:
+  # same chance level as the test (20%), so differences of a few points are resolvable.
+  g = torch.Generator().manual_seed(0)
+  n = len(frames)
+  others = (torch.arange(n)[:, None] + torch.randint(1, n, (n, 4), generator=g)) % n
+  cand = torch.cat([torch.arange(n)[:, None], others], 1)
+  out['m2t_5way'] = 100 * (sim[torch.arange(n)[:, None], cand].argmax(1) == 0).float().mean().item()
+  out['t2m_5way'] = 100 * (sim.t()[torch.arange(n)[:, None], cand].argmax(1) == 0).float().mean().item()
+  return n, out
 
 
 if __name__ == '__main__':
