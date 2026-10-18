@@ -191,6 +191,8 @@ Checks before the first run, all done on 18 Oct:
 | CPU checks: lengths, rate, speed, axes (Design 6, 7) | 706937 | see Design 6 and 7 |
 | Z: released ego model on the DynPose test (20 FPS, ego axes) | 706968 | 26.30 / 25.40 (chance 20) |
 | Smoke test of U1, one epoch | 706961 | runs; both validation sets logged; timing above |
+| Tests of the U1 smoke checkpoint on both test sets (`eval_ego_exo.sh`) | 706978 | ego 44.89, exo 34.60 after one epoch; per-question files written |
+| S-exo path: one epoch of the authors' exo task, then its test (`exo_test.sh --dataset dynpose_pretrain`) | 706979 | 46.20; about 4 min per epoch |
 
 ## Risks and what we cut first
 - **Exo starts from ego weights.** If U1 trails S-exo but matches E→X, the gap comes from the starting point, not
