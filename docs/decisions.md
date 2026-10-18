@@ -57,6 +57,16 @@ For the record, the seed-0 comparison on the test (`python compare_runs.py --a p
 files being each run's `test_questions.csv` from `eval_run.sh`; 10,000 take resamples, seed 0): B' minus A is
 +3.82 points on procedural questions (95% interval +2.50 to +5.18) and +2.43 overall (+1.25 to +3.48).
 
+**Rule for the final claim, fixed 18 Oct before any result of seeds 1 and 2 is seen.** On motion-to-text
+accuracy, comparing B' with A over seeds 0-2 with `compare_runs.py` (two-level bootstrap over seeds and takes):
+- "Same-take negatives improve procedural accuracy" is claimed only if the 95% interval of B' minus A on
+  procedural questions is above zero, and B' beats A on procedural questions in seed 1 and in seed 2 separately
+  (the seeds trained after the go decision).
+- "The gain comes from more than the verb rule" is claimed only if, by the same test, B' also beats C.
+- "No cost on physical activities" is claimed only if the interval of B' minus A on physical questions has a
+  lower end above -1 point.
+- Anything else is reported as measured, including a negative result.
+
 The regression check passed before the seed runs were queued (job 705870, `reproduction OK` at 44.81 / 33.61) on
 revision bb5dc84. Between a8fc1ec (the pilot) and bb5dc84 the only change under `src/camformer/` is the new
 file `compare_runs.py` (`git diff --stat a8fc1ec bb5dc84 -- src/camformer`), which training and testing do not
