@@ -279,6 +279,10 @@ def train(args):
       use_distributed_sampler=args.same_take_k == 0 and not joint,
       check_val_every_n_epoch=args.val_every,
   )
+  # With validation every n epochs, Lightning writes last.ckpt only after a validation, so a run whose epoch count
+  # is not a multiple of n would end without saving its final weights.
+  if args.epochs % args.val_every:
+    raise ValueError(f'--epochs ({args.epochs}) must be a multiple of --val_every ({args.val_every})')
 
   # `--ckpt` restores a full Lightning checkpoint. The released slim encoder
   # weights instead load via `--init_ckpt` (in __init__), and are evaluated

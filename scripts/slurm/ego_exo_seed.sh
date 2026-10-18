@@ -2,6 +2,8 @@
 # Submits all runs of one seed of experiment 2 (docs/ego_exo.md, "Runs"), each followed by its tests, as two
 # GPU jobs (the queue allows 2 running): U1, S-exo, E->X on one GPU; U0, S-ego on the other. About 7 hours.
 # Usage, on the login node after scripts/deploy.sh:  bash ~/dl4cv/ego_exo_seed.sh <seed>
+# E->X gets the ego flags --take_duration 8 --sample_dur too: DynPose ignores them, but the run's ego test reads its
+# protocol from args.json, and without them it would score 8 s windows instead of the authors' test windows.
 set -euo pipefail
 seed=$1
 cd ~/dl4cv/camformer
@@ -22,11 +24,19 @@ U0=ee_U0_s$seed U1=ee_U1_s$seed SEGO=ee_Sego_s$seed SEXO=ee_Sexo_s$seed EX=ee_EX
 J=egoexo4d_dynpose_longseq
 mkdir -p ~/dl4cv/run_ckpts
 
+# Every run of a seed must start fresh on this code revision: train.sh always resumes from an existing last.ckpt.
+for r in $U0 $U1 $SEGO $SEXO $EX; do
+  if ls -d ~/data/logs/*/$r >/dev/null 2>&1; then
+    echo "refusing: a log directory for $r already exists ($(ls -d ~/data/logs/*/$r)); move it away first" >&2
+    exit 1
+  fi
+done
+
 gpu1="$(train --dataset $J $EGO $EXO $INIT_EGO --domain_token --job_name $U1) && $(test_longseq $J $U1); \
 $(train --dataset dynpose_pretrain --pose_encoding rel9d --pose_source vipe --epochs 20 --seed $seed --val_every 5 \
   --init_ckpt checkpoints/dynpose100k_vipe.pt --job_name $SEXO) && $(test_sexo $SEXO); \
-$(train --dataset dynpose_longseq --pose_encoding rel9d_grav --epochs 20 --seed $seed --val_every 5 $EXO $INIT_EGO \
-  --job_name $EX) && $(test_longseq dynpose_longseq $EX)"
+$(train --dataset dynpose_longseq --pose_encoding rel9d_grav --take_duration 8 --sample_dur --epochs 20 --seed $seed \
+  --val_every 5 $EXO $INIT_EGO --job_name $EX) && $(test_longseq dynpose_longseq $EX)"
 gpu2="$(train --dataset $J $EGO $EXO $INIT_EGO --job_name $U0) && $(test_longseq $J $U0); \
 $(train --dataset egoexo4d_pretrain_longseq $EGO $INIT_EGO --job_name $SEGO) && $(test_longseq egoexo4d_pretrain_longseq $SEGO) ego"
 

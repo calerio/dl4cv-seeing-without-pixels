@@ -77,7 +77,8 @@ Every change sits behind a flag whose default reproduces the authors' code.
    rule could not have failed and says little. On the same clips, a 5-way choice with random distractors
    (chance 20%) gives 50.42 native and 49.38 at 20 FPS: one point lost. Resampling stays the default; the
    rule's metric is reported as chosen badly.
-6. **Common axes** (`--exo_to_aria_axes`). Exo camera frames are turned into the ego camera frame before the
+6. **Common axes** (`--exo_to_aria_axes`). ViPE stores OpenCV camera-to-world matrices (its writer, `vipe/utils/io.py`: "Save OpenCV cam2world
+matrices as 4x4 matrix in npz file"), which fixes the y-down sign that the exo data alone cannot. Exo camera frames are turned into the ego camera frame before the
    relative poses are computed. **Checked 18 Oct** (`exo_checks.py`, job 706937, 2,000 training clips per domain):
    - Ego, as stored: the camera x axis points down (mean world-up component −0.81; y +0.11, z −0.19), and ego
      motion lies mostly along ±y and ±z (x carries 12% of it). So the stored frame is x down, y left,
@@ -108,7 +109,6 @@ number of updates in every run that trains on it: 3,100 ego steps and 1,720 exo 
 |---|---|---|---|---|
 | R. Released | the two released models | none | n/a | Reference rows (44.81 / 46.3) |
 | Z. Zero-shot | released ego | none | n/a | How far the ego model reaches on exo with no exo training |
-| Z'. Zero-shot | released exo | none | n/a | The reverse: the exo model on the ego test |
 | S-ego | released ego | ego | n/a | Ego specialist with the same extra training. Same settings as run A of experiment 1, but retrained for every seed on the same code revision as U0 and U1, so the comparison does not mix code versions |
 | S-exo | released exo | exo | n/a | Exo specialist with the same extra training |
 | E→X | released ego | exo | n/a | Exo from the ego weights: separates "starting from ego" from "sharing one model" |
@@ -159,7 +159,7 @@ takes about 11 min of training; a validation pass on both domains about 4 min.
 | U0, U1 | about 4 h each (20 joint epochs, validation every 5 epochs) |
 | S-exo, E→X | about 1.5 h each |
 | S-ego | about 2.5 h (20 ego epochs) |
-| Tests (about 3 min each), Z and Z' | under 1 h in all |
+| Tests (about 3 min each) and Z | under 1 h in all |
 
 About 14 GPU-hours per seed, 42 for three seeds: about 21 hours of wall time on our 2 GPUs. The pilot (seed 0)
 is about 7 hours of wall time. Every run of one seed uses the same code revision, which is recorded with its
@@ -202,5 +202,5 @@ Checks before the first run, all done on 18 Oct:
   video frame (index step 1). No cropping.
 - **1,000 exo questions are few.** Small exo differences will not be significant; we say so instead of reading
   them.
-- **If time runs short**, cut in this order: seeds 1 and 2 of E→X, then the resampling ablation, then Z and Z',
+- **If time runs short**, cut in this order: seeds 1 and 2 of E→X, then the resampling ablation, then Z,
   then validation altogether. U0, U1, S-ego and S-exo are the experiment and are not cut.

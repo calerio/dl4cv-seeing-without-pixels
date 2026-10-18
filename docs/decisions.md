@@ -3,6 +3,24 @@
 Choices that change how we run or compare experiments, with the reason for each. Newest first.
 Each one is meant to be cited in the report.
 
+## D4. Experiment 2 puts exo trajectories through the ego model's input path (18 Oct 2026)
+
+**Situation.** The joint model (docs/ego_exo.md) needs exo (DynPose, ViPE poses) and ego (Ego-Exo4D) clips in one
+encoder. The authors trained them with different tasks, rates and axes.
+
+**Decision.** In the joint runs and in E->X, exo clips go through the long-sequence (ego) path with the whole clip
+as one window, are resampled from 30 to 20 FPS (`--exo_resample_hz 20`), and are turned into the ego camera axes
+by a 90 degree turn about the forward axis (`--exo_to_aria_axes`). S-exo keeps the authors' exo task unchanged.
+
+**Evidence.** The released exo model scores 46.30 through the authors' path and 46.20 through ours at the native
+rate (jobs 706967, 706944). Resampling costs about one point on a 5-way check over 7,925 validation clips outside
+the test (50.42 against 49.38, job 706966); it is kept as a choice, not as a gain. The axis turn follows from the
+stored ego frames (camera x has a world-up component of -0.81, `exo_checks.py`, jobs 706934, 706937) and ViPE's
+OpenCV convention.
+
+**Consequence for comparisons.** U1 against S-exo differs in path, rate and axes as well as in sharing; U1 against
+E->X shares all three and is the clean test of sharing.
+
 ## D3. Hard negatives: fine-tune, add a within-take loss term, and gate the full runs on one pilot (16 Oct 2026)
 
 **Situation.** Two first fine-tuning runs (20 epochs from the released checkpoint, without a fixed seed) gave
