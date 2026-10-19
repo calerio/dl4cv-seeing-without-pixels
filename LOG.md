@@ -2,6 +2,18 @@
 
 What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 
+## Mon 19 Oct 2026
+- Merged the experiment 2 code ([`docs/ego_exo.md`](docs/ego_exo.md), decision D4). Checks: the reproduction still gives 44.81 with the new flags off and with the domain token on; the released exo model gives 46.30 through the authors' path and 46.20 through ours.
+- Measured that the stored ego camera frame has x pointing down, so exo frames are turned by 90 degrees about the forward axis.
+- Started seed 0 of experiment 2 (runs U0, U1, S-ego, S-exo, E->X).
+- Started the project wiki (GitHub Wiki): status, FAQ, glossary.
+
+**Next:** read the seed-0 results and apply the pilot rule in `docs/ego_exo.md`.
+
+## Sun 18 Oct 2026
+- Experiment 1 finished: seeds 0-2 of A, C and B'. B' beats A by 3.5 points on procedural questions, in each seed; all three claims of the rule fixed in D3 are met ([`results/hard_negatives.md`](results/hard_negatives.md)).
+- Recorded the pilot gate outcome and the rule for the final claim in D3.
+
 ## Sat 17 Oct 2026
 - The HPC datacenter has been unreachable since the evening of 16 Oct (cable cut); the pilot results are pending.
 - Changes now go through pull requests, reviewed against [`REVIEW.md`](REVIEW.md). Added a regression check that re-scores the released checkpoint (`scripts/slurm/check_reproduction.sh`).
