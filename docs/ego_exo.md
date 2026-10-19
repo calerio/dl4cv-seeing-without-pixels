@@ -77,9 +77,10 @@ Every change sits behind a flag whose default reproduces the authors' code.
    rule could not have failed and says little. On the same clips, a 5-way choice with random distractors
    (chance 20%) gives 50.42 native and 49.38 at 20 FPS: one point lost. Resampling stays the default; the
    rule's metric is reported as chosen badly.
-6. **Common axes** (`--exo_to_aria_axes`). ViPE stores OpenCV camera-to-world matrices (its writer, `vipe/utils/io.py`: "Save OpenCV cam2world
-matrices as 4x4 matrix in npz file"), which fixes the y-down sign that the exo data alone cannot. Exo camera frames are turned into the ego camera frame before the
-   relative poses are computed. **Checked 18 Oct** (`exo_checks.py`, job 706937, 2,000 training clips per domain):
+6. **Common axes** (`--exo_to_aria_axes`). Exo camera frames are turned into the ego camera frame before the
+   relative poses are computed. ViPE stores OpenCV camera-to-world matrices (its writer, `vipe/utils/io.py`:
+   "Save OpenCV cam2world matrices as 4x4 matrix in npz file"), which fixes the y-down sign that the exo data
+   alone cannot. **Checked 18 Oct** (`exo_checks.py`, job 706937, 2,000 training clips per domain):
    - Ego, as stored: the camera x axis points down (mean world-up component −0.81; y +0.11, z −0.19), and ego
      motion lies mostly along ±y and ±z (x carries 12% of it). So the stored frame is x down, y left,
      z forward, not the "x left, y up" of supp. 2.3.
