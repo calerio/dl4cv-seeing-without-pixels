@@ -6,6 +6,8 @@ Group project for 20600 Deep Learning for Computer Vision (Bocconi, a.y. 2026-27
 
 **Team:** Juan Ignacio Arguello, Valerio Costa, Facundo Lucero
 
+New here? Start with the plain-language [project wiki](docs/wiki/README.md): status, FAQ and glossary.
+
 ## The paper
 We build on *Seeing without Pixels: Perception from Camera Trajectories* (Xue et al., CVPR 2026;
 [paper](https://arxiv.org/abs/2511.21681), [code](https://github.com/google-deepmind/seeing_without_pixels)).
