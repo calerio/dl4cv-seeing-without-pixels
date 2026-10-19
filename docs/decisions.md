@@ -32,6 +32,46 @@ go ahead only if B' against A shows all three of: a clearly lower within-take lo
 on the within-take questions from training takes, and at least 1 point more on the procedural test questions.
 Otherwise we report the negative result with these measurements and stop this experiment.
 
+**Gate outcome (18 Oct 2026).** Pilot runs `p1_A_s0` and `p1_Bp_s0` (seed 0, jobs 704740-704743, code
+a8fc1ec), diagnostics job 705850 (`diagnose.sh` on both `last.ckpt` files, defaults: 20 batches, K=8, 5,000
+questions, seed 0):
+
+| Criterion | A | B' | Result |
+|---|---|---|---|
+| 1. Within-take loss on training batches, 8 clips per take | 1.467 | 1.405 | lower, but see below |
+| 2. Within-take 5-way MCQ on training takes (m2t) | 60.50 | 61.92 | passed |
+| 3. Procedural test, m2t, at least +1 point | 33.27 | 37.09 | passed |
+
+Criterion 1 said "clearly lower" with no number. The drop is 4%; for scale, plain fine-tuning (released model to
+A) moved it from 1.473 to 1.467. Calling 4% "clear" is a reading made after the measurement, so by the letter of
+the rule criterion 1 is undecided, and the gate passed only under that post-hoc reading. We went ahead with the
+seed runs on that basis and say so here.
+
+Two limits of the gate itself, which we did not see when we set it:
+- Criterion 3 uses the test set to decide whether to continue. It tunes no model, but our final result is
+  conditional on seed 0 having looked good on the test. To keep the evidence separate, the report gives seeds
+  1 and 2, trained after the decision, on their own as well as the three-seed mean.
+- Seed 0 alone is not evidence of an effect: its intervals below cover test sampling only.
+
+For the record, the seed-0 comparison on the test (`python compare_runs.py --a p1_A_s0.csv --b p1_Bp_s0.csv`, the
+files being each run's `test_questions.csv` from `eval_run.sh`; 10,000 take resamples, seed 0): B' minus A is
++3.82 points on procedural questions (95% interval +2.50 to +5.18) and +2.43 overall (+1.25 to +3.48).
+
+**Rule for the final claim, fixed 18 Oct before any result of seeds 1 and 2 is seen.** On motion-to-text
+accuracy, comparing B' with A over seeds 0-2 with `compare_runs.py` (two-level bootstrap over seeds and takes):
+- "Same-take negatives improve procedural accuracy" is claimed only if the 95% interval of B' minus A on
+  procedural questions is above zero, and B' beats A on procedural questions in seed 1 and in seed 2 separately
+  (the seeds trained after the go decision).
+- "The gain comes from more than the verb rule" is claimed only if, by the same test, B' also beats C.
+- "No cost on physical activities" is claimed only if the interval of B' minus A on physical questions has a
+  lower end above -1 point.
+- Anything else is reported as measured, including a negative result.
+
+The regression check passed before the seed runs were queued (job 705870, `reproduction OK` at 44.81 / 33.61) on
+revision bb5dc84. Between a8fc1ec (the pilot) and bb5dc84 the only change under `src/camformer/` is the new
+file `compare_runs.py` (`git diff --stat a8fc1ec bb5dc84 -- src/camformer`), which training and testing do not
+import, so the check covers the pilot's code too.
+
 ## D2. Checkpoints leave out the frozen CLIP text model (16 Oct 2026)
 
 **Situation.** Each Lightning checkpoint was about 620 MB, and a run keeps two (best and last). Almost all of
