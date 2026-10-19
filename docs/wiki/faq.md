@@ -47,7 +47,7 @@ too (+1.5). All three claims in the rule we wrote down before those two runs are
 caveat about how we decided to continue: [`results/hard_negatives.md`](../../results/hard_negatives.md).
 
 **Why train it three times?**
-Training involves randomness. One good run could be luck; the same gain in three runs is not.
+Training involves randomness. One good run could be luck; the same gain in three runs is unlikely to be luck.
 
 **Why did the first attempt do nothing?**
 Simply putting same-video clips in a batch made them about 3% of what the model learns from, too little to matter. An

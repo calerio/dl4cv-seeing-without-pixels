@@ -27,7 +27,7 @@ Key dates: presentation Tue 24 Nov, poster Tue 1 Dec. Plan in [`SCHEDULE.md`](..
 
 Each number is the mean of 3 runs; per-run numbers, commands and intervals are in
 [`results/hard_negatives.md`](../../results/hard_negatives.md). B′ beat A in each run. Gain on step-by-step tasks:
-+3.5 points (95% interval +2.4 to +4.8); sports/dance +1.5 (+0.3 to +2.6). The verb rule alone (C) does nothing.
++3.5 points (95% interval +2.4 to +4.8); sports/dance +1.5 (+0.3 to +2.6). The verb rule alone (C) has no measurable effect.
 All three claims in the rule we fixed before seeing runs 2 and 3 are met.
 
 One honest caveat: the decision to run seeds 1 and 2 was made after seed 0 looked good on the test, using one
