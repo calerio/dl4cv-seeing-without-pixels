@@ -52,12 +52,51 @@ def get_args():
           'egoexo4d_pretrain_longseq',
           'dynpose_pretrain',
           'nymeria_pretrain',
+          'dynpose_longseq',
+          'egoexo4d_dynpose_longseq',
       ],
       help=(
           'egoexo4d_pretrain_longseq = ego (contextualized longseq task); '
           'dynpose_pretrain = exo; nymeria_pretrain = ego zero-shot eval. '
-          'Datasets without "longseq" use the base (mean-pooled) task.'
+          'Datasets without "longseq" use the base (mean-pooled) task. '
+          'Experiment 2: dynpose_longseq = exo clips through the longseq task; '
+          'egoexo4d_dynpose_longseq = joint ego + exo training (see --test_domain).'
       ),
+  )
+  # Experiment 2 (one model for ego and exo). All off by default.
+  parser.add_argument(
+      '--domain_token',
+      action='store_true',
+      help='Add a learned, zero-initialised per-domain vector to every input token.',
+  )
+  parser.add_argument(
+      '--exo_resample_hz',
+      type=float,
+      default=0.0,
+      help='Resample exo poses to this rate before encoding (0 = native rate).',
+  )
+  parser.add_argument(
+      '--exo_to_aria_axes',
+      action='store_true',
+      help='Turn exo camera frames from OpenCV axes into the ego camera frame as stored (90 degrees about z).',
+  )
+  parser.add_argument(
+      '--test_domain',
+      choices=['ego', 'exo'],
+      default='ego',
+      help='Test set for egoexo4d_dynpose_longseq: Ego-Exo4D or DynPose.',
+  )
+  parser.add_argument(
+      '--exo_eval_split',
+      choices=['test', 'val_nontest'],
+      default='test',
+      help='DynPose evaluation set: the 5-way test, or the validation clips not used by the test.',
+  )
+  parser.add_argument(
+      '--val_every',
+      type=int,
+      default=1,
+      help='Run validation every N epochs (monitoring only; no checkpoint is picked on it).',
   )
   parser.add_argument('--scenario', type=str, default='')
   parser.add_argument(
@@ -199,6 +238,9 @@ def train(args):
 
   if args.same_take_k > 0 and args.num_gpus > 1:
     raise ValueError('--same_take_k supports one GPU only')
+  joint = args.dataset == 'egoexo4d_dynpose_longseq'
+  if joint and args.num_gpus > 1:
+    raise ValueError('joint ego + exo training supports one GPU only')
 
   checkpoint_callback_best = ModelCheckpoint(
       dirpath=os.path.join(log_dir, 'checkpoints'),
@@ -233,9 +275,14 @@ def train(args):
       callbacks=[checkpoint_callback_best],
       logger=loggers,
       strategy='ddp_find_unused_parameters_true',
-      # The same-take batch sampler is single-GPU; Lightning would otherwise try to shard it.
-      use_distributed_sampler=args.same_take_k == 0,
+      # The same-take and domain batch samplers are single-GPU; Lightning would otherwise try to shard them.
+      use_distributed_sampler=args.same_take_k == 0 and not joint,
+      check_val_every_n_epoch=args.val_every,
   )
+  # With validation every n epochs, Lightning writes last.ckpt only after a validation, so a run whose epoch count
+  # is not a multiple of n would end without saving its final weights.
+  if args.epochs % args.val_every:
+    raise ValueError(f'--epochs ({args.epochs}) must be a multiple of --val_every ({args.val_every})')
 
   # `--ckpt` restores a full Lightning checkpoint. The released slim encoder
   # weights instead load via `--init_ckpt` (in __init__), and are evaluated

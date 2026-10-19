@@ -14,8 +14,9 @@
 # ==============================================================================
 
 import os
+import time
 import clip
-from loader import create_loader
+from loader import create_loader, domain_ids
 import matplotlib.pyplot as plt
 from models.cm_encoder import CameraPoseSeqEncoder
 from models.text_encoder import ContextAwareTextEncoder
@@ -64,6 +65,7 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
         pooling='no',
         use_scenario_label=args.use_scenario_label,
         use_learnable_gravity=args.use_learnable_gravity,
+        domain_token=getattr(args, 'domain_token', False),
     )
 
     if self.args.hier_text:
@@ -100,6 +102,11 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
         else:
           new_state_dict[k] = v
       result = self.model.load_state_dict(new_state_dict, strict=False)
+      # The domain token is new in experiment 2 and starts at zero, so checkpoints need not have it.
+      missing = [k for k in result.missing_keys if not k.startswith('domain_embed.')]
+      if len(missing) < len(result.missing_keys):
+        print('[init_ckpt] domain token not in checkpoint: starts at zero')
+      result.missing_keys[:] = missing
       if result.unexpected_keys:
         print(
             f'[init_ckpt] ignored {len(result.unexpected_keys)} non-encoder'
@@ -132,7 +139,17 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
     return optimizer
 
   def encode_motion(self, poses, pad_mask, text_list, lengths, scenario_labels):
-    motion_features = self.model(poses, pad_mask, lengths, scenario_labels)
+    domains = domain_ids(text_list).to(poses.device)
+    exo = bool((domains == 1).any())
+    motion_features = self.model(
+        poses,
+        pad_mask,
+        lengths,
+        scenario_labels,
+        # Ego-only batches pass nothing, so the authors' path is untouched.
+        has_gravity=(domains == 0) if exo else None,
+        domain_ids=domains,
+    )
     # Average only the frames inside each sample's [t0:t1] window.
     motion_means = [
         motion_features[j, t[0] : t[1]].mean(dim=0)
@@ -176,17 +193,23 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
     contrastive_loss = self.criterion(features, text_features, texts)
     total_loss = contrastive_loss
 
-    # Within-take term: each pair against same-take pairs with a different verb.
-    # Logged in every run, as a diagnostic; trained on only if its weight is > 0.
+    exo_batch = len(text_list[0]) > 4  # joint training draws every batch from one domain
+    if self.args.dataset == 'egoexo4d_dynpose_longseq':
+      name = 'train_loss_exo' if exo_batch else 'train_loss_ego'
+      self.log(name, contrastive_loss, on_step=False, on_epoch=True, logger=True)
+
+    # Within-take term (experiment 1): each pair against same-take pairs with a different verb.
+    # Logged on ego batches as a diagnostic; trained on only if its weight is > 0.
     weight = getattr(self.args, 'within_take_weight', 0.0)
-    takes = [t[3] for t in text_list]
-    verbs = [primary_verb(t[2]) for t in text_list]
-    with torch.set_grad_enabled(weight > 0 and torch.is_grad_enabled()):
-      wt_loss, wt_rows = within_take_loss(features, text_features, takes, verbs)
-    if weight > 0:
-      total_loss = total_loss + weight * wt_loss
-    self.log('train_within_take_loss', wt_loss, on_step=False, on_epoch=True, logger=True)
-    self.log('train_within_take_rows', float(wt_rows), on_step=False, on_epoch=True, logger=True)
+    if not exo_batch:
+      takes = [t[3] for t in text_list]
+      verbs = [primary_verb(t[2]) for t in text_list]
+      with torch.set_grad_enabled(weight > 0 and torch.is_grad_enabled()):
+        wt_loss, wt_rows = within_take_loss(features, text_features, takes, verbs)
+      if weight > 0:
+        total_loss = total_loss + weight * wt_loss
+      self.log('train_within_take_loss', wt_loss, on_step=False, on_epoch=True, logger=True)
+      self.log('train_within_take_rows', float(wt_rows), on_step=False, on_epoch=True, logger=True)
 
     if self.args.cls_loss_weight > 0:
       motion_features_avg = motion_features.mean(dim=1)
@@ -220,7 +243,30 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
     )
     return total_loss
 
-  def validation_step(self, batch, batch_idx):
+  # Step timing per domain in joint training (compute only, without data loading), printed each epoch.
+  def on_train_batch_start(self, batch, batch_idx):
+    if self.args.dataset == 'egoexo4d_dynpose_longseq':
+      self._t0 = time.perf_counter()
+
+  def on_train_batch_end(self, outputs, batch, batch_idx):
+    if self.args.dataset == 'egoexo4d_dynpose_longseq':
+      torch.cuda.synchronize()
+      d = 'exo' if len(batch[2][0]) > 4 else 'ego'
+      self._step_times = getattr(self, '_step_times', {'ego': [], 'exo': []})
+      self._step_times[d].append(time.perf_counter() - self._t0)
+
+  def on_train_epoch_end(self):
+    times = getattr(self, '_step_times', None)
+    if times:
+      for d, t in times.items():
+        if t:
+          print(f'[timing] epoch {self.current_epoch}: {len(t)} {d} steps, median {sorted(t)[len(t) // 2]:.3f} s,'
+                f' total {sum(t) / 60:.1f} min')
+      self._step_times = {'ego': [], 'exo': []}
+
+  def validation_step(self, batch, batch_idx, dataloader_idx=0):
+    # Joint training validates on two loaders: 0 = ego (logged as before), 1 = exo (prefixed 'exo_').
+    prefix = 'exo_' if dataloader_idx == 1 else ''
     poses, pad_mask, text_list, lengths, scenario_labels, full_text_list = batch
     motion_features, features = self.encode_motion(
         poses, pad_mask, text_list, lengths, scenario_labels
@@ -234,7 +280,10 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
         [t[3] for t in text_list],
         [primary_verb(t[2]) for t in text_list],
     )
-    self.log('val_within_take_loss', wt_loss, on_step=False, on_epoch=True, logger=True)
+    self.log(
+        f'{prefix}val_within_take_loss', wt_loss, on_step=False, on_epoch=True, logger=True,
+        add_dataloader_idx=False,
+    )
     features = F.normalize(features, dim=-1)
     text_features = F.normalize(text_features, dim=-1)
     sim_matrix = torch.matmul(features, text_features.t())
@@ -266,7 +315,8 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
 
     for name, value in metrics.items():
       self.log(
-          name, value, on_step=False, on_epoch=True, prog_bar=True, logger=True
+          prefix + name, value, on_step=False, on_epoch=True, prog_bar=True, logger=True,
+          add_dataloader_idx=False,
       )
     return metrics
 
@@ -309,6 +359,15 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
     )
     if self.args.sample_dur:
       save_dir = save_dir + f'/testdur{self.args.test_take_duration}'
+    exo_test = self.args.dataset == 'dynpose_longseq' or (
+        self.args.dataset == 'egoexo4d_dynpose_longseq' and self.args.test_domain == 'exo'
+    )
+    if exo_test:
+      a = self.args
+      save_dir = (
+          f'final_data/retrieval_features/ours/{a.dataset}_exo/{tag}/{a.exo_eval_split}_{a.pose_source}'
+          f'_hz{a.exo_resample_hz:g}_aria{int(a.exo_to_aria_axes)}'
+      )
     os.makedirs(save_dir, exist_ok=True)
     torch.save(all_features, os.path.join(save_dir, 'frames.pt'))
     torch.save(all_text_features, os.path.join(save_dir, 'text.pt'))

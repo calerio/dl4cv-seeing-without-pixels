@@ -12,7 +12,8 @@
 # Regression check: our code must still reproduce Table 2 of the paper from the released checkpoint
 # (motion-to-text 44.81 overall on the Ego-Exo4D 5-way test). Run it after any change to the training,
 # data or evaluation code, before spending GPU time on new runs. Fails (exit 1) on any difference.
-# Usage, after scripts/deploy.sh:  cd ~/dl4cv/camformer && sbatch ~/dl4cv/check_reproduction.sh
+# Usage, after scripts/deploy.sh:  cd ~/dl4cv/camformer && sbatch ~/dl4cv/check_reproduction.sh [extra train.py flags]
+# Extra flags must leave the released model unchanged at step 0 (e.g. --domain_token, which starts at zero).
 
 module load sw/miniconda3
 eval "$(conda shell.bash hook)"
@@ -29,7 +30,7 @@ echo "code revision $(cat REVISION 2>/dev/null || echo unknown)"
 start=$(mktemp); trap 'rm -f "$start"' EXIT
 python train.py --dataset egoexo4d_pretrain_longseq --test --scenario all \
     --pose_encoding rel9d_grav --take_duration 8 --sample_dur \
-    --num_gpus 1 --batch_size 1000 --init_ckpt checkpoints/egoexo4d_dur8.pt
+    --num_gpus 1 --batch_size 1000 --init_ckpt checkpoints/egoexo4d_dur8.pt "$@"
 
 f=$(find final_data/retrieval_features/ours/egoexo4d_pretrain_longseq -name frames.pt -newer "$start" | head -1)
 [ -n "$f" ] || { echo "FAIL: no new test features written"; exit 1; }
