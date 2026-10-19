@@ -11,7 +11,7 @@ What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 **Next:** read the seed-0 results and apply the pilot rule in `docs/ego_exo.md`.
 
 ## Sun 18 Oct 2026
-- Experiment 1 finished: seeds 0-2 of A, C and B'. B' beats A by 3.5 points on procedural questions, in each seed; all three claims of the rule fixed in D3 are met ([`results/hard_negatives.md`](results/hard_negatives.md)).
+- Experiment 1 finished: seeds 0-2 of A, C and B'. B' beats A on procedural questions in each seed (+2.8 to +4.0 points; +3.55 pooled); all three claims of the rule fixed in D3 are met ([`results/hard_negatives.md`](results/hard_negatives.md)).
 - Recorded the pilot gate outcome and the rule for the final claim in D3.
 
 ## Sat 17 Oct 2026
