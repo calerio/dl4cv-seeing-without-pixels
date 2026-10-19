@@ -7,7 +7,7 @@ Updated each working day at about 18:00. Newest diary entry first.
 | Part | Status |
 |---|---|
 | Reproduce the paper | ✅ Done: 44.81%, exact match |
-| Experiment 1: harder wrong answers | ✅ Done: clear gain on step-by-step tasks |
+| Experiment 1: harder wrong answers | ✅ Done: gain on step-by-step tasks in all 3 runs |
 | Experiment 2: one model for both viewpoints | 🟡 First training runs (seed 0) running |
 | Experiment 3: eye gaze | ⬜ Data checked and usable; not started |
 | Report, slides, poster | ⬜ Not started |
@@ -25,8 +25,13 @@ Key dates: presentation Tue 24 Nov, poster Tue 1 Dec. Plan in [`SCHEDULE.md`](..
 | C: verb rule only | 33.4 | 52.0 | 45.1 |
 | **B′: same-video wrong answers + within-take loss** | **36.9** | **53.4** | **47.3** |
 
-B′ beat A in every run. Gain on step-by-step tasks: +3.5 points (95% interval +2.4 to +4.8). The verb rule alone (C)
-does nothing; the gain comes from training on same-video clips.
+Each number is the mean of 3 runs; per-run numbers, commands and intervals are in
+[`results/hard_negatives.md`](../../results/hard_negatives.md). B′ beat A in each run. Gain on step-by-step tasks:
++3.5 points (95% interval +2.4 to +4.8); sports/dance +1.5 (+0.3 to +2.6). The verb rule alone (C) does nothing.
+All three claims in the rule we fixed before seeing runs 2 and 3 are met.
+
+One honest caveat: the decision to run seeds 1 and 2 was made after seed 0 looked good on the test, using one
+criterion we judged only after seeing it. That is why runs 2 and 3, trained after the decision, are shown on their own.
 
 ## Diary
 

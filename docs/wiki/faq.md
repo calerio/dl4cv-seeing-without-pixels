@@ -41,8 +41,10 @@ In the test, the five options all come from the same video, so the model must te
 much easier to rule out. We trained it on same-video wrong answers too.
 
 **Did it work?**
-Yes. On step-by-step tasks accuracy went from 33.4% to 36.9%, and overall from 45.0% to 47.3%. It held in all three
-training runs, and sports/dance improved a little too ([status](status.md)).
+Yes. On step-by-step tasks accuracy went from 33.4% to 36.9%, and overall from 45.0% to 47.3% (means of 3 runs).
+B′ beat the baseline in each run, including the two trained after we decided to continue, and sports/dance went up
+too (+1.5). All three claims in the rule we wrote down before those two runs are met. Full numbers and the one
+caveat about how we decided to continue: [`results/hard_negatives.md`](../../results/hard_negatives.md).
 
 **Why train it three times?**
 Training involves randomness. One good run could be luck; the same gain in three runs is not.
