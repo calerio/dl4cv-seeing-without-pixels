@@ -158,6 +158,11 @@ collate).
 - **Coverage over the model's input windows: passed.** Valid gaze share, mean per clip: train 99.67% physical and
   100.00% procedural (30,000 sampled training clips, seed 0); validation and test 100.00% in both types. No gap
   between types, so no secondary analysis is needed.
+  Shuffled input (job 709878, code a2194b1, same clips): mean valid share 97.6% (train and validation physical) to
+  99.8% (test procedural), against 99.7-100% for real gaze; same-take and cross-take donors within 2.3 points of
+  each other in every split and type (`results/gaze_checks.md`). So a -shuf run sees the validity flag off on about
+  0.2-2.4% more frames than its real twin, most on physical clips; reported with the results, small next to the
+  content difference the control is for.
 - **Donor map (rebuilt 20 Oct with the two rules in Design 6):** `data_files/egoexo4d/gaze_donors_v1.csv.gz`,
   207,176 clip windows, every one with a donor; checks asserted (same-take donors: different window, no overlap in
   time; cross-take donors: different take, same scenario; every donor take has gaze). Built by job 709874 running
