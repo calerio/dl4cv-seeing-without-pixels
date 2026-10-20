@@ -66,6 +66,7 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
         use_scenario_label=args.use_scenario_label,
         use_learnable_gravity=args.use_learnable_gravity,
         domain_token=getattr(args, 'domain_token', False),
+        gaze_input=getattr(args, 'gaze_input', False),
     )
 
     if self.args.hier_text:
@@ -102,10 +103,13 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
         else:
           new_state_dict[k] = v
       result = self.model.load_state_dict(new_state_dict, strict=False)
-      # The domain token is new in experiment 2 and starts at zero, so checkpoints need not have it.
-      missing = [k for k in result.missing_keys if not k.startswith('domain_embed.')]
+      # The domain token (experiment 2) and the gaze layer (experiment 3) start at zero, so checkpoints need not
+      # have them.
+      missing = [
+          k for k in result.missing_keys if not k.startswith('domain_embed.') and not k.startswith('gaze_proj.')
+      ]
       if len(missing) < len(result.missing_keys):
-        print('[init_ckpt] domain token not in checkpoint: starts at zero')
+        print('[init_ckpt] domain token or gaze layer not in checkpoint: starts at zero')
       result.missing_keys[:] = missing
       if result.unexpected_keys:
         print(
@@ -129,6 +133,13 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
 
   def configure_optimizers(self):
     params = list(self.model.parameters())
+    if getattr(self.args, 'freeze_encoder', False):
+      # Experiment 3, frozen variant: only the gaze layer trains. The module stays in training mode, so dropout
+      # and gravity dropout act exactly as in the full fine-tuning runs.
+      for name, p in self.model.named_parameters():
+        p.requires_grad = name.startswith('gaze_proj.')
+      params = [p for p in self.model.parameters() if p.requires_grad]
+      assert params, '--freeze_encoder needs --gaze_input'
     if self.args.cls_loss_weight > 0:
       params.extend(list(self.cls_model.parameters()))
     optimizer = torch.optim.AdamW(
@@ -138,8 +149,9 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
     )
     return optimizer
 
-  def encode_motion(self, poses, pad_mask, text_list, lengths, scenario_labels):
+  def encode_motion(self, poses, pad_mask, text_list, lengths, scenario_labels, extra=None):
     domains = domain_ids(text_list).to(poses.device)
+    gaze = extra['gaze'].to(poses.device) if isinstance(extra, dict) else None
     exo = bool((domains == 1).any())
     motion_features = self.model(
         poses,
@@ -149,6 +161,7 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
         # Ego-only batches pass nothing, so the authors' path is untouched.
         has_gravity=(domains == 0) if exo else None,
         domain_ids=domains,
+        gaze=gaze,
     )
     # Average only the frames inside each sample's [t0:t1] window.
     motion_means = [
@@ -160,6 +173,7 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
 
   def encode_text(self, text_list, full_text_list):
     if self.args.hier_text:
+      assert not isinstance(full_text_list, dict), '--hier_text cannot be combined with --gaze'
       text_features = self.text_encoder(full_text_list)
     else:
       all_texts = [text[2] for text in text_list]
@@ -174,7 +188,7 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
   def training_step(self, batch, batch_idx):
     poses, pad_mask, text_list, lengths, scenario_labels, full_text_list = batch
     motion_features, features = self.encode_motion(
-        poses, pad_mask, text_list, lengths, scenario_labels
+        poses, pad_mask, text_list, lengths, scenario_labels, full_text_list
     )
     text_features = self.encode_text(text_list, full_text_list)
 
@@ -269,7 +283,7 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
     prefix = 'exo_' if dataloader_idx == 1 else ''
     poses, pad_mask, text_list, lengths, scenario_labels, full_text_list = batch
     motion_features, features = self.encode_motion(
-        poses, pad_mask, text_list, lengths, scenario_labels
+        poses, pad_mask, text_list, lengths, scenario_labels, full_text_list
     )
     text_features = self.encode_text(text_list, full_text_list)
 
@@ -323,7 +337,7 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
   def test_step(self, batch, batch_idx):
     poses, pad_mask, text_list, lengths, scenario_labels, full_text_list = batch
     motion_features, features = self.encode_motion(
-        poses, pad_mask, text_list, lengths, scenario_labels
+        poses, pad_mask, text_list, lengths, scenario_labels, full_text_list
     )
     text_features = self.encode_text(text_list, full_text_list)
 
@@ -359,6 +373,8 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
     )
     if self.args.sample_dur:
       save_dir = save_dir + f'/testdur{self.args.test_take_duration}'
+    if getattr(self.args, 'gaze', 'none') != 'none':
+      save_dir = save_dir + f'/gaze_{self.args.gaze}'
     exo_test = self.args.dataset == 'dynpose_longseq' or (
         self.args.dataset == 'egoexo4d_dynpose_longseq' and self.args.test_domain == 'exo'
     )
