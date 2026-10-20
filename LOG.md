@@ -2,6 +2,11 @@
 
 What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 
+## Tue 20 Oct 2026
+- Experiment 2 finished: seeds 0-2 of S-ego, S-exo, E->X, U0 and U1 ([`results/ego_exo.md`](results/ego_exo.md)). Against the rule fixed in advance: the joint model matches the ego specialist within 1.5 points but cannot be shown to match the exo specialist (2.6 points lower on average, interval -5.6 to +0.4); the domain token adds nothing measurable. Training the ego model on exo data alone loses 12.7 points on the ego test, which joint training avoids.
+
+**Next:** design note for experiment 3 (eye gaze).
+
 ## Mon 19 Oct 2026
 - Merged the experiment 2 code ([`docs/ego_exo.md`](docs/ego_exo.md), decision D4). Checks: the reproduction still gives 44.81 with the new flags off and with the domain token on; the released exo model gives 46.30 through the authors' path and 46.20 through ours.
 - Measured that the stored ego camera frame has x pointing down, so exo frames are turned by 90 degrees about the forward axis.
