@@ -60,8 +60,8 @@ seeds and test videos or takes, 10,000 resamples, seed 0; with three seeds the s
 
 ### Against the reporting rule (fixed in `docs/ego_exo.md` before the runs)
 - "One model matches the specialists": needs U1 - S inside +-1.5 on Ego-Exo4D and inside +-3 on DynPose. Ego:
-  -0.52 to +0.81, inside. Exo: -5.63 to +0.40, not inside. **Not claimed.** On first-person video the joint model
-  is as good as the specialist within +-1.5 points. On third-person video the test cannot tell whether there is a
+  -0.52 to +0.81, inside. Exo: -5.63 to +0.40, not inside. **Not claimed.** The ego interval lies inside the +-1.5
+  margin, but the claim needs the exo test too, which fails. On third-person video the test cannot tell whether there is a
   gap, nor rule out one of up to 5.6 points. Read first, as the design note asks, the clean test of sharing: U1
   against E->X, which shares starting weights, input path, rate and axes, is -1.63 (-4.49 to +1.09). Of the 2.6
   points between U1 and S-exo, about 1 is already there without any sharing (E->X is 45.77 against S-exo's 46.73),
@@ -71,7 +71,7 @@ seeds and test videos or takes, 10,000 resamples, seed 0; with three seeds the s
   already separates the domains through the gravity-unknown token, the translation scale and the clip length.
 - Reported as measured (descriptive): after training on exo data alone, E->X scores 32.2 on the ego test, against
   44.81 for the released ego model and 44.95 for S-ego; joint training (U0, U1) keeps ego accuracy at about 45.
-  Joint training avoids that forgetting.
+  U0 and U1 do not show that drop.
 
 ### Limits
 - The exo test has 1,000 questions, so exo differences under about 3 points cannot be resolved; seed spread on exo
