@@ -88,6 +88,9 @@ def test_donor_map():
   assert (ss['take'] != ss['d_take']).all()
   assert (ss['take'].map(scen) == ss['d_take'].map(scen)).all()
   assert (d['donor_take'] == d['d_take']).all()
+  # No donor crosses the train / eval boundary (validation and test share takes).
+  tr = set(pd.read_csv(_resolve_csv('train_v2.csv'), usecols=['save_id'])['save_id'].map(lambda s: '_'.join(s.split('_')[:-2])))
+  assert (d['take'].isin(tr) == d['d_take'].isin(tr)).all()
   # Every clip has a donor.
   none = (donors['donor_rule'] == 'none').sum()
   assert none == 0, f'{none} clips without a donor'
@@ -98,14 +101,17 @@ def test_donor_map():
 
 
 def test_donor_rules_synthetic():
-  w = pd.DataFrame({'save_id': ['a1', 'a2', 'b1', 'c1'], 'take_name': ['A', 'A', 'B', 'C'],
-                    'start_time': [0.0, 20.0, 0.0, 0.0], 'end_time': [10.0, 30.0, 10.0, 10.0]})
-  d = gaze.build_donor_map(w, {'A', 'B', 'C'}, {'A': 'Cooking', 'B': 'Cooking', 'C': 'Soccer'}).set_index('save_id')
+  w = pd.DataFrame({'save_id': ['a1', 'a2', 'b1', 'c1', 'e1'], 'take_name': ['A', 'A', 'B', 'C', 'E'],
+                    'start_time': [0.0, 20.0, 0.0, 0.0, 0.0], 'end_time': [10.0, 30.0, 10.0, 10.0, 10.0]})
+  scen = {'A': 'Cooking', 'B': 'Cooking', 'C': 'Soccer', 'E': 'Cooking'}
+  grp = {'A': 'train', 'B': 'train', 'C': 'train', 'E': 'eval'}
+  d = gaze.build_donor_map(w, {'A', 'B', 'C', 'E'}, scen, grp).set_index('save_id')
   assert d.loc['a1', 'donor_save_id'] == 'a2' and d.loc['a1', 'donor_rule'] == 'same_take'
   assert d.loc['b1', 'donor_rule'] == 'same_scenario' and d.loc['b1', 'donor_take'] == 'A'
   assert d.loc['c1', 'donor_rule'] == 'none'  # only take of its scenario
   # A take without gaze gets no same-take donor and falls back to another take of its scenario.
-  d2 = gaze.build_donor_map(w, {'B', 'C'}, {'A': 'Cooking', 'B': 'Cooking', 'C': 'Soccer'}).set_index('save_id')
+  assert d.loc['e1', 'donor_rule'] == 'none'  # the only eval Cooking take: no donor from a train take
+  d2 = gaze.build_donor_map(w, {'B', 'C', 'E'}, scen, grp).set_index('save_id')
   assert d2.loc['a1', 'donor_rule'] == 'same_scenario' and d2.loc['a1', 'donor_take'] == 'B'
   print('ok donor rules on a synthetic map')
 

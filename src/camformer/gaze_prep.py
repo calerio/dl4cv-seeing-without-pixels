@@ -38,6 +38,14 @@ def split_frames():
   return out
 
 
+def split_groups(frames):
+  """take_name -> 'train' or 'eval' (validation and test share takes). Fails if a take is in both groups."""
+  train = set(frames['train']['take_name'])
+  ev = set(frames['val']['take_name']) | set(frames['test']['take_name'])
+  assert not train & ev, f'{len(train & ev)} takes in both train and eval'
+  return {**{t: 'train' for t in train}, **{t: 'eval' for t in ev}}
+
+
 def step_cache(opts, frames):
   t0 = pd.read_csv(opts.traj_t0).set_index('take')['traj_t0_us']
   takes = sorted(set().union(*[set(df['take_name']) for df in frames.values()]))
@@ -85,8 +93,11 @@ def step_donors(opts, frames):
   win = win.drop_duplicates('save_id')
   with_gaze = {f[:-4] for f in os.listdir(gaze.GAZE_DIR) if f.endswith('.npz')}
   scen = pd.read_csv(_resolve_csv('scenario_cls.csv')).set_index('take_name')['task']
-  donors = gaze.build_donor_map(win, with_gaze, scen)
+  group = split_groups(frames)
+  donors = gaze.build_donor_map(win, with_gaze, scen, group)
   donors.to_csv(gaze.DONOR_FILE, index=False)
+  import hashlib
+  print(f'[donors] sha256 of the CSV content: {hashlib.sha256(donors.to_csv(index=False).encode()).hexdigest()}')
   # Checks: every clip present; same-take donors are a different, non-overlapping window; cross-take donors are a
   # different take of the same scenario; every donor take has gaze.
   assert set(donors['save_id']) == set(win['save_id'])
@@ -97,6 +108,7 @@ def step_donors(opts, frames):
   assert not ((st['d_start_time'] < st['end_time']) & (st['d_end_time'] > st['start_time'])).any()
   assert (ss['take_name'] != ss['d_take_name']).all()
   assert (ss['take_name'].map(scen) == ss['d_take_name'].map(scen)).all()
+  assert (d['take_name'].map(group) == d['d_take_name'].map(group)).all()  # no donor across train / eval
   assert d['donor_take'].isin(with_gaze).all() and (d['donor_take'] == d['d_take_name']).all()
   print(f'[donors] {len(donors)} clip windows written to {gaze.DONOR_FILE}; checks passed')
   # How many clips (CSV rows, i.e. narrations, as the model sees them) get each kind of donor.

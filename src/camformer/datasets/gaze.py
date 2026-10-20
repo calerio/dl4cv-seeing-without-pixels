@@ -98,34 +98,38 @@ def clip_gaze(mode, row, frame_idx, frame_dt):
   raise ValueError(f'unknown gaze mode {mode}')
 
 
-def build_donor_map(windows, takes_with_gaze, scenario_of, seed=20261020):
+def build_donor_map(windows, takes_with_gaze, scenario_of, group_of, seed=20261020):
   """One donor per clip window, so every clip in a shuffled-gaze run gets realistic but wrong gaze.
 
   windows: DataFrame with save_id, take_name, start_time, end_time (one row per distinct save_id).
   scenario_of: take_name -> activity scenario (e.g. 'Cooking').
+  group_of: take_name -> split group ('train', or 'eval' for validation and test, which share takes). Rule 2 only
+  draws donors from the same group, so no training clip gets gaze from a validation or test take, or the reverse.
   Rule 'same_take' (primary): a different window of the same take, with gaze, not overlapping this window in time.
   Rule 'same_scenario' (only if the take has no such window, mostly short takes): a window of a different take of
-  the same scenario, with gaze. The draw uses its own fixed seed, independent of any training seed. A clip that
+  the same scenario and split group, with gaze. The draw uses its own fixed seed, independent of any training seed. A clip that
   still has no donor gets '' and rule 'none'.
   """
   rng = np.random.default_rng(seed)
   w = windows.sort_values(['take_name', 'start_time', 'save_id']).reset_index(drop=True)
   w['scenario'] = w['take_name'].map(scenario_of).fillna('')
+  w['group'] = w['take_name'].map(group_of)
+  assert w['group'].notna().all(), 'every take needs a split group'
   pool = w[w['take_name'].isin(takes_with_gaze)]
-  by_scen = {sc: g for sc, g in pool.groupby('scenario')}
+  by_scen = {key: g for key, g in pool.groupby(['scenario', 'group'])}
   rows = []
   for take, g in w.groupby('take_name', sort=True):
     ids = g['save_id'].to_numpy()
     s = g['start_time'].to_numpy()
     e = g['end_time'].to_numpy()
-    sc = g['scenario'].iloc[0]
+    sc, grp = g['scenario'].iloc[0], g['group'].iloc[0]
     for k in range(len(g)):
       cand = np.where((e <= s[k]) | (s >= e[k]))[0] if take in takes_with_gaze else np.array([], dtype=int)
       if len(cand):
         j = int(rng.choice(cand))
         rows.append((ids[k], ids[j], take, round(s[j], 5), round(e[j], 5), 'same_take'))
         continue
-      other = by_scen.get(sc)
+      other = by_scen.get((sc, grp))
       other = other[other['take_name'] != take] if other is not None and sc else None
       if other is not None and len(other):
         r = other.iloc[int(rng.integers(len(other)))]
