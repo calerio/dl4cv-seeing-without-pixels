@@ -72,7 +72,7 @@ entirely between our own runs, all starting from the released checkpoint.
    the same take (GF-shuf, GT-shuf): same input statistics, same parameters and training, no information about this
    clip. If a gain is real, gaze must beat the shuffled twin, not only the no-gaze baseline. Details, fixed now:
    - **One donor map for everything.** Each clip's donor is drawn once with a fixed data seed (independent of the
-     training `--seed`) and written to a committed CSV (`data_files/egoexo4d/gaze_donors_v1.csv`) for train,
+     training `--seed`) and written to a committed CSV (`data_files/egoexo4d/gaze_donors_v1.csv.gz`) for train,
      validation and test. Training, testing and the gate's diagnostics all read that file, so a shuffled run sees the
      same donor at every stage.
    - **No temporal overlap.** Stored windows span +-duration seconds around each caption, so neighbouring clips share
@@ -160,8 +160,9 @@ collate).
   between types, so no secondary analysis is needed.
 - **Donor map (rebuilt 20 Oct with the two rules in Design 6):** `data_files/egoexo4d/gaze_donors_v1.csv.gz`,
   207,176 clip windows, every one with a donor; checks asserted (same-take donors: different window, no overlap in
-  time; cross-take donors: different take, same scenario; every donor take has gaze). Job 709874, code 77f7cc7,
-  `sbatch ~/dl4cv/gaze_prep.sh donors`. Clips (CSV rows, as the model sees them) by rule:
+  time; cross-take donors: different take, same scenario; every donor take has gaze). Built by job 709874 running
+  code 77f7cc7 (`sbatch ~/dl4cv/gaze_prep.sh donors`); commit e3c51a8 only adds that job's output file and these
+  notes. Valid-gaze share of the shuffled input, by rule: see the coverage results and `results/gaze_checks.md`. Clips (CSV rows, as the model sees them) by rule:
 
   | Split | Type | Clips | Same take | Other take, same scenario |
   |---|---|---|---|---|
@@ -183,11 +184,11 @@ collate).
   | real gaze | +0.053 | -0.028 | -0.132 | -0.218 | **-0.247** | -0.224 | -0.180 |
   | donor gaze (control) | +0.001 | +0.002 | +0.002 | +0.002 | +0.002 | +0.002 | +0.002 |
 
-  The reflex is clearly there (strong anticorrelation on the vertical device axis, none with donor gaze, almost none
-  on the other two axes), so gaze and poses are on the same clock, but the peak is at +2 frames: the gaze at a pose
-  frame's time matches head motion about 100 ms later. A gaze timestamp convention (e.g. timestamps at the start of
-  a 10 Hz averaging window) or a fixed offset between the two streams would both explain it. Per the rule above,
-  training does not start until this is understood and the offset either explained or corrected and re-checked.
+  Real gaze is clearly related to head motion (strong correlation on the vertical device axis, none with donor
+  gaze), but the peak is at +2 frames: the gaze at a pose frame's time matches head motion about 100 ms later. Per
+  the rule above, training does not start until this is understood. (Job 709477, code d900001,
+  `sbatch ~/dl4cv/gaze_prep.sh`.) The follow-up below shows this check cannot tell a timing error from normal
+  eye-head behaviour.
 - **Native-rate follow-up (20 Oct): the offset is not a pipeline artefact, and it is not a clean clock offset.
   Training stays on hold.** `sbatch ~/dl4cv/gaze_prep.sh vor_native --vor_clips 3000`, job 709871, code e0abf27:
   eye-in-head rate from the native 10 Hz gaze samples (central differences, no interpolation) against head rate
@@ -202,19 +203,25 @@ collate).
   | 20 Hz model features, yaw, central differences, all | +100 ms | -0.263 | -0.149 |
 
   - Not the feature pipeline: native samples give the same offset as the 20 Hz features.
-  - Not a clean constant: per take (160 takes with a clear peak) the peak is always positive but spread from +90
-    to +250 ms (p10 to p90, median +140), and it differs by activity (median +100 ms Dance, +125 Basketball,
-    +150 Cooking, +185 Bike Repair, +230 Soccer). A clock offset would be the same for every activity.
+  - Per take, among the 160 of 627 takes with a clear negative peak (r <= -0.2 with at least 40 samples; a selected
+    subset), the peak is always positive but spread from +90 to +250 ms (p10 to p90, median +140), with activity
+    medians from +100 ms (Dance, 29 takes) to +230 ms (Soccer, 13 takes). A pure clock offset would give the same
+    lag for every activity; these medians suggest it is not one, but with these take counts and a selected subset
+    they do not prove it.
+  - Two weaknesses of the scan itself: it takes the most negative r, which is the wrong lobe if the sign
+    conventions of eye yaw and head axis 0 are opposite; and the per-take statistics use a selected subset.
   - The reflex itself is not isolated at 10 Hz: on the "VOR-only" samples the eye/head gain is -0.03, where the
     reflex would give about -1, and the correlation there is weak. At 10 Hz, eye movement is dominated by gaze
     shifts, in which the eyes move ahead of the head by an amount that depends on the task, which fits an
     activity-dependent lag of 100-250 ms. The sign conventions of eye yaw and head axis 0 are not pinned down, so
     the scan cannot tell "eyes counter-rotate" from "eyes lead in the same direction".
-  - Consequence: the alignment criterion fixed above (peak at lag 0 +-1 frame) assumed the 10 Hz signal is
-    dominated by the reflex, which it is not, so the check cannot confirm or rule out a timing error. No shift is
-    applied. **Needs a decision before training:** either a different alignment test (e.g. one that uses the gaze
-    projected into the RGB frame, or a check at the level of individual saccade onsets), or accepting the
-    timestamps as documented (same device clock, Aria docs) and stating the open question in the report.
+  - Consequence: the alignment check fixed above (peak at lag 0 +-1 frame) **failed and stays failed**; it rested
+    on the 10 Hz signal being dominated by the reflex, which it is not, so it cannot confirm or rule out a timing
+    error. No shift is applied. **Needs a decision before training, recorded here before anything else is run:**
+    either (a) a replacement alignment test with its pass/fail threshold written down first (for example the sign
+    pinned with a synthetic known rotation, then a scan of |r|; or gaze projected into the RGB frame, which needs
+    video we do not have), or (b) proceeding on the documented timestamps (same device clock, Aria docs) as an
+    **untested assumption**, stated as such in the report, not as a passed check. Logs: `results/gaze_checks.md`.
 
 
 ## Code changes (each behind a flag; defaults keep the authors' behaviour)

@@ -71,9 +71,7 @@ def test_dataset_time_alignment():
 
 
 def test_donor_map():
-  if not os.path.exists(gaze.DONOR_FILE):
-    print('skip donor map (not built yet)')
-    return
+  assert os.path.exists(gaze.DONOR_FILE), 'donor map missing: run gaze_prep.py donors'
   donors = pd.read_csv(gaze.DONOR_FILE, keep_default_na=False)
   win = pd.concat([pd.read_csv(_resolve_csv(f))[['save_id', 'start_time', 'end_time']]
                    for f in ('train_v2.csv', 'val_v2.csv', 'test_alltasks_mcqv0.csv')]).drop_duplicates('save_id')
@@ -106,7 +104,39 @@ def test_donor_rules_synthetic():
   assert d.loc['a1', 'donor_save_id'] == 'a2' and d.loc['a1', 'donor_rule'] == 'same_take'
   assert d.loc['b1', 'donor_rule'] == 'same_scenario' and d.loc['b1', 'donor_take'] == 'A'
   assert d.loc['c1', 'donor_rule'] == 'none'  # only take of its scenario
+  # A take without gaze gets no same-take donor and falls back to another take of its scenario.
+  d2 = gaze.build_donor_map(w, {'B', 'C'}, {'A': 'Cooking', 'B': 'Cooking', 'C': 'Soccer'}).set_index('save_id')
+  assert d2.loc['a1', 'donor_rule'] == 'same_scenario' and d2.loc['a1', 'donor_take'] == 'B'
   print('ok donor rules on a synthetic map')
+
+
+def test_shuffled_slice():
+  """Shuffled gaze reads the donor's take at the donor's start plus the same relative times, flag 0 past its end."""
+  import tempfile
+  with tempfile.TemporaryDirectory() as d:
+    t = np.arange(0, 100, 0.1)
+    for take in ('take_a', 'take_b'):
+      np.savez(os.path.join(d, take + '.npz'), t=t, yaw=(t + (0 if take == 'take_a' else 1000)).astype(np.float32),
+               pitch=np.zeros_like(t, dtype=np.float32), log_depth=np.zeros_like(t, dtype=np.float32))
+    donors = os.path.join(d, 'donors.csv')
+    pd.DataFrame({'save_id': ['c1'], 'donor_save_id': ['d1'], 'donor_take': ['take_b'], 'donor_start_time': [40.0],
+                  'donor_end_time': [41.0], 'donor_rule': ['same_scenario']}).to_csv(donors, index=False)
+    old_dir, old_file = gaze.GAZE_DIR, gaze.DONOR_FILE
+    gaze.GAZE_DIR = d
+    gaze.load_take.cache_clear(); gaze.load_donors.cache_clear()
+    old_defaults = gaze.load_donors.__wrapped__.__defaults__
+    gaze.load_donors.__wrapped__.__defaults__ = (donors,)
+    try:
+      row = {'save_id': 'c1', 'take_name': 'take_a', 'start_time': 10.0}
+      f = gaze.clip_gaze('shuffled', row, np.arange(40), 0.05)
+      inside = np.arange(40) * 0.05 <= 1.0
+      assert np.allclose(f[inside, 0], 1040 + np.arange(40)[inside] * 0.05, atol=1e-3)
+      assert (f[inside, 3] == 1).all() and (f[~inside] == 0).all()
+    finally:
+      gaze.GAZE_DIR, gaze.DONOR_FILE = old_dir, old_file
+      gaze.load_donors.__wrapped__.__defaults__ = old_defaults
+      gaze.load_take.cache_clear(); gaze.load_donors.cache_clear()
+  print('ok shuffled gaze: donor take, donor start + relative time, flag 0 past the donor window')
 
 
 def test_collate():
@@ -126,5 +156,6 @@ if __name__ == '__main__':
   test_dataset_time_alignment()
   test_donor_map()
   test_donor_rules_synthetic()
+  test_shuffled_slice()
   test_collate()
   print('all gaze tests passed')

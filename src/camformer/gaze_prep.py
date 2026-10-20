@@ -124,17 +124,24 @@ def step_coverage(opts, frames):
     idx = list(range(len(ds)))
     if split == 'train' and len(idx) > opts.train_sample:
       idx = random.sample(idx, opts.train_sample)
+    rule = {k: v[4] for k, v in gaze.load_donors().items()}
     rows = []
     for i in idx:
       row = ds.df.iloc[i]
       frames_i, _ = ds.window(row)
       g = gaze.clip_gaze('real', row, frames_i, ds.frame_dt)
-      rows.append((scen.get(row['take_name'], ''), g[:, 3].mean() if len(g) else 0.0))
-    r = pd.DataFrame(rows, columns=['scenario', 'valid'])
+      h = gaze.clip_gaze('shuffled', row, frames_i, ds.frame_dt)
+      rows.append((scen.get(row['take_name'], ''), rule.get(row['save_id'], 'none'),
+                   g[:, 3].mean() if len(g) else 0.0, h[:, 3].mean() if len(h) else 0.0))
+    r = pd.DataFrame(rows, columns=['scenario', 'rule', 'valid', 'valid_shuf'])
     r['type'] = np.where(r['scenario'].isin(PROCEDURAL), 'procedural', 'physical')
     for t, g in r.groupby('type'):
-      print(f'[coverage] {split:5s} {t:10s} clips {len(g):6d}  mean valid share {100 * g.valid.mean():.2f}%  '
-            f'clips with >=90% valid {100 * (g.valid >= 0.9).mean():.2f}%')
+      print(f'[coverage] {split:5s} {t:10s} clips {len(g):6d}  real: mean valid share {100 * g.valid.mean():.2f}%, '
+            f'>=90% valid {100 * (g.valid >= 0.9).mean():.2f}%  shuffled: mean {100 * g.valid_shuf.mean():.2f}%, '
+            f'>=90% valid {100 * (g.valid_shuf >= 0.9).mean():.2f}%')
+      for ru, gg in g.groupby('rule'):
+        print(f'[coverage]   {split:5s} {t:10s} donor rule {ru:13s} clips {len(gg):6d}  shuffled mean valid share '
+              f'{100 * gg.valid_shuf.mean():.2f}%  >=90% valid {100 * (gg.valid_shuf >= 0.9).mean():.2f}%')
 
 
 def head_yaw_rate(quat_xyzw, axis):
