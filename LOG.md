@@ -3,7 +3,7 @@
 What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 
 ## Tue 20 Oct 2026
-- Experiment 2 finished: seeds 0-2 of S-ego, S-exo, E->X, U0 and U1 ([`results/ego_exo.md`](results/ego_exo.md)). Against the rule fixed in advance: the joint model matches the ego specialist within 1.5 points; on the exo test a match can neither be shown nor ruled out (against E->X, the clean test of sharing: -1.6, interval -4.5 to +1.1). The domain token adds nothing measurable. Training the ego model on exo data alone drops it to 32.2 on the ego test, which joint training avoids.
+- Experiment 2 finished: seeds 0-2 of S-ego, S-exo, E->X, U0 and U1 ([`results/ego_exo.md`](results/ego_exo.md)). Against the rule fixed in advance: the joint model matches the ego specialist within 1.5 points; on the exo test a match can neither be shown nor ruled out (against E->X, the clean test of sharing: -1.6, interval -4.5 to +1.1). The domain token adds nothing measurable. Training the ego model on exo data alone drops it to 32.2 on the ego test; the joint models do not show that drop.
 
 **Next:** design note for experiment 3 (eye gaze).
 
