@@ -27,14 +27,15 @@ Single-seed differences, `python compare_runs.py --a <A file> --b <U1 file>` (in
 | U1 - U0 | ego | +0.20 | -0.33 to +0.73 |
 
 **Pilot rule** (`docs/ego_exo.md`): seeds 1 and 2 run if every seed-0 run finished and U1 is within 5 points of each
-specialist on its test. All runs finished; U1 is +0.69 against S-ego and -4.40 against S-exo. Met, with the exo gap
+specialist on its test. All runs finished; U1 is +0.69 against S-ego (from unrounded accuracies) and -4.40 against S-exo. Met, with the exo gap
 close to the limit. Seeds 1 and 2 were launched on the same code (jobs 708367-708370).
 
 These are single-seed numbers: no claim is made from them. The final claims follow the rule in `docs/ego_exo.md`
 once seeds 1 and 2 are in.
 
 ## Seeds 0-2 (final)
-Seeds 1 and 2: `bash ~/dl4cv/ego_exo_seed.sh 1` and `2`, same code 402cc33, jobs 708367-708370.
+Seeds 1 and 2: `bash ~/dl4cv/ego_exo_seed.sh 1` and `2`, same code 402cc33. Seed 1: jobs 708367 (U1, S-exo, E->X)
+and 708368 (U0, S-ego); seed 2: jobs 708369 and 708370, same split. Seed 0 likewise: 707658 and 707659.
 
 | Run | Seed | Ego test | Exo test |
 |---|---|---|---|
@@ -54,19 +55,23 @@ seeds and test videos or takes, 10,000 resamples, seed 0; with three seeds the s
 | U1 - E->X | exo | 45.77, 44.13 | -1.63 | -4.49 to +1.09 |
 | U1 - U0 | exo | 44.60, 44.13 | -0.47 | -3.40 to +2.51 |
 | U1 - U0 | ego | 45.04, 45.09 | +0.05 | -0.42 to +0.54 |
-| U0 - S-exo | exo | 46.73, 44.60 | -2.13 | -5.79 to +1.31 |
-| E->X - S-ego | ego | 44.95, 32.22 | -12.74 | -15.48 to -9.77 |
+| U0 - S-exo (descriptive, not pre-specified) | exo | 46.73, 44.60 | -2.13 | -5.79 to +1.31 |
+| E->X - S-ego (descriptive, not pre-specified) | ego | 44.95, 32.22 | -12.74 | -15.48 to -9.77 |
 
 ### Against the reporting rule (fixed in `docs/ego_exo.md` before the runs)
 - "One model matches the specialists": needs U1 - S inside +-1.5 on Ego-Exo4D and inside +-3 on DynPose. Ego:
   -0.52 to +0.81, inside. Exo: -5.63 to +0.40, not inside. **Not claimed.** On first-person video the joint model
-  is as good as the specialist within +-1.5 points; on third-person video it averages 2.6 points lower, and the
-  test cannot tell whether that gap is real (the interval includes zero) or rule out a gap of up to 5.6 points.
+  is as good as the specialist within +-1.5 points. On third-person video the test cannot tell whether there is a
+  gap, nor rule out one of up to 5.6 points. Read first, as the design note asks, the clean test of sharing: U1
+  against E->X, which shares starting weights, input path, rate and axes, is -1.63 (-4.49 to +1.09). Of the 2.6
+  points between U1 and S-exo, about 1 is already there without any sharing (E->X is 45.77 against S-exo's 46.73),
+  so the gap cannot be read as a cost of sharing.
 - "The domain token helps": needs U1 - U0 on DynPose above zero. -0.47 (-3.40 to +2.51). **Not claimed.** As the
-  design note expected, the token adds nothing measurable; the encoder can tell the domains apart without it.
-- Reported as measured: training the ego model on exo data alone (E->X) costs 12.7 points on the ego test
-  (interval -15.5 to -9.8), while joint training (U0, U1) keeps ego accuracy. Joint training avoids that
-  forgetting.
+  design note expected, the token adds nothing measurable here. A possible reason, not tested, is that the encoder
+  already separates the domains through the gravity-unknown token, the translation scale and the clip length.
+- Reported as measured (descriptive): after training on exo data alone, E->X scores 32.2 on the ego test, against
+  44.81 for the released ego model and 44.95 for S-ego; joint training (U0, U1) keeps ego accuracy at about 45.
+  Joint training avoids that forgetting.
 
 ### Limits
 - The exo test has 1,000 questions, so exo differences under about 3 points cannot be resolved; seed spread on exo
