@@ -85,8 +85,9 @@ entirely between our own runs, all starting from the released checkpoint.
    - **Which clips get which donor (decided 20 Oct, before any gaze run).** Every clip in a -shuf run gets realistic
      but wrong gaze; none gets zeros. Rule 1, used whenever possible: a different stored window of the **same take**
      that has gaze and is at least one window away. Rule 2, only for clips whose take has no such window (mostly
-     short takes): a window of a **different take of the same scenario** (e.g. another Cooking take), drawn with the
-     same fixed data seed. The donor CSV records the donor's take and which rule supplied it (`donor_rule`:
+     short takes): a window of a **different take of the same scenario and the same split group** (e.g. another
+     Cooking take; training clips only from training takes, validation and test clips only from validation/test
+     takes, so no gaze crosses the train/eval boundary), drawn with the same fixed data seed. The donor CSV records the donor's take and which rule supplied it (`donor_rule`:
      `same_take` or `same_scenario`). Counts per split and activity type are under "Checks before training".
 7. **Everything else** as experiment 1's A: 20 epochs, batch 1,024, lr 1e-4, random batches, authors' loss, last
    checkpoint tested. Frozen runs use the same lr for `gaze_proj`.
@@ -158,16 +159,16 @@ collate).
 - **Coverage over the model's input windows: passed.** Valid gaze share, mean per clip: train 99.67% physical and
   100.00% procedural (30,000 sampled training clips, seed 0); validation and test 100.00% in both types. No gap
   between types, so no secondary analysis is needed.
-  Shuffled input (job 709878, code a2194b1, same clips): mean valid share 97.6% (train and validation physical) to
-  99.8% (test procedural), against 99.7-100% for real gaze; same-take and cross-take donors within 2.3 points of
+  Shuffled input (job 709883, code ee408bd, same clips): mean valid share 97.6% (train and validation physical) to
+  99.8% (test procedural), against 99.7-100% for real gaze; same-take and cross-take donors within 2.2 points of
   each other in every split and type (`results/gaze_checks.md`). So a -shuf run sees the validity flag off on about
   0.2-2.4% more frames than its real twin, most on physical clips; reported with the results, small next to the
   content difference the control is for.
 - **Donor map (rebuilt 20 Oct with the two rules in Design 6):** `data_files/egoexo4d/gaze_donors_v1.csv.gz`,
   207,176 clip windows, every one with a donor; checks asserted (same-take donors: different window, no overlap in
-  time; cross-take donors: different take, same scenario; every donor take has gaze). Built by job 709874 running
-  code 77f7cc7 (`sbatch ~/dl4cv/gaze_prep.sh donors`); commit e3c51a8 only adds that job's output file and these
-  notes. Valid-gaze share of the shuffled input, by rule: see the coverage results and `results/gaze_checks.md`. Clips (CSV rows, as the model sees them) by rule:
+  time; cross-take donors: different take, same scenario, same split group; every donor take has gaze). Built by
+  job 709883 running code ee408bd (`sbatch ~/dl4cv/gaze_prep.sh donors coverage`); content sha256 2172ba95...,
+  printed in the log. The committed file is that job's output. Valid-gaze share of the shuffled input, by rule: see the coverage results and `results/gaze_checks.md`. Clips (CSV rows, as the model sees them) by rule:
 
   | Split | Type | Clips | Same take | Other take, same scenario |
   |---|---|---|---|---|
@@ -189,8 +190,8 @@ collate).
   | real gaze | +0.053 | -0.028 | -0.132 | -0.218 | **-0.247** | -0.224 | -0.180 |
   | donor gaze (control) | +0.001 | +0.002 | +0.002 | +0.002 | +0.002 | +0.002 | +0.002 |
 
-  Real gaze is clearly related to head motion (strong correlation on the vertical device axis, none with donor
-  gaze), but the peak is at +2 frames: the gaze at a pose frame's time matches head motion about 100 ms later. Per
+  Real gaze is clearly related to head motion compared with the donor control (r about -0.25 on the vertical
+  device axis, about 0 with donor gaze), but the peak is at +2 frames: the gaze at a pose frame's time matches head motion about 100 ms later. Per
   the rule above, training does not start until this is understood. (Job 709477, code d900001,
   `sbatch ~/dl4cv/gaze_prep.sh`.) The follow-up below shows this check cannot tell a timing error from normal
   eye-head behaviour.

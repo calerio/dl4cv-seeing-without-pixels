@@ -1,6 +1,8 @@
 # Experiment 3 checks: job logs (key lines, verbatim)
 
 Copied from the cluster job outputs (`~/dl4cv/camformer/out/`) so the numbers in `docs/gaze.md` can be traced.
+The donor lines of jobs 709477 (one rule, 65,301 windows without a donor) and 709874 (two rules, no split
+restriction) are superseded by job 709883 (two rules within split groups), whose output is the committed map.
 
 ## Job 709477
 ```
@@ -82,6 +84,49 @@ code revision a2194b1
 ```
 
 ## Job 709879
+```
+ok zero-init identity
+ok gaze frame k -> pose token k
+ok pose frame k gets gaze at start_time + frame_idx[k] * frame_dt
+ok donor map: 141875 same-take and 65301 same-scenario donors, every clip has one
+ok donor rules on a synthetic map
+ok shuffled gaze: donor take, donor start + relative time, flag 0 past the donor window
+ok collate
+all gaze tests passed
+```
+
+## Job 709883
+```
+code revision ee408bd
+[donors] sha256 of the CSV content: 2172ba9551d8d09b40b9fa9f82d0a177fc5bb0692d6f9c22e5c938383b848ffa
+[donors] 207176 clip windows written to /mnt/beegfsstudents/home/3195720/dl4cv/camformer/data_files/egoexo4d/gaze_donors_v1.csv.gz; checks passed
+[donors] train physical   clips 104920  same take  42146 ( 40.2%)  other take, same scenario  62774 ( 59.8%)  none 0
+[donors] train procedural clips  54266  same take  51050 ( 94.1%)  other take, same scenario   3216 (  5.9%)  none 0
+[donors] val   physical   clips  26493  same take   9684 ( 36.6%)  other take, same scenario  16809 ( 63.4%)  none 0
+[donors] val   procedural clips  42580  same take  41670 ( 97.9%)  other take, same scenario    910 (  2.1%)  none 0
+[donors] test  physical   clips  22290  same take  12787 ( 57.4%)  other take, same scenario   9503 ( 42.6%)  none 0
+[donors] test  procedural clips  13105  same take  12356 ( 94.3%)  other take, same scenario    749 (  5.7%)  none 0
+[coverage] train physical   clips  19869  real: mean valid share 99.67%, >=90% valid 99.67%  shuffled: mean 97.65%, >=90% valid 95.06%
+[coverage]   train physical   donor rule same_scenario clips  11832  shuffled mean valid share 98.28%  >=90% valid 96.44%
+[coverage]   train physical   donor rule same_take     clips   8037  shuffled mean valid share 96.72%  >=90% valid 93.02%
+[coverage] train procedural clips  10131  real: mean valid share 100.00%, >=90% valid 100.00%  shuffled: mean 98.69%, >=90% valid 97.07%
+[coverage]   train procedural donor rule same_scenario clips    597  shuffled mean valid share 99.08%  >=90% valid 98.16%
+[coverage]   train procedural donor rule same_take     clips   9534  shuffled mean valid share 98.67%  >=90% valid 97.00%
+[coverage] val   physical   clips  26493  real: mean valid share 100.00%, >=90% valid 100.00%  shuffled: mean 97.57%, >=90% valid 94.83%
+[coverage]   val   physical   donor rule same_scenario clips  16809  shuffled mean valid share 98.34%  >=90% valid 96.59%
+[coverage]   val   physical   donor rule same_take     clips   9684  shuffled mean valid share 96.23%  >=90% valid 91.79%
+[coverage] val   procedural clips  42580  real: mean valid share 100.00%, >=90% valid 100.00%  shuffled: mean 99.38%, >=90% valid 98.36%
+[coverage]   val   procedural donor rule same_scenario clips    910  shuffled mean valid share 99.41%  >=90% valid 98.02%
+[coverage]   val   procedural donor rule same_take     clips  41670  shuffled mean valid share 99.38%  >=90% valid 98.37%
+[coverage] test  physical   clips  22290  real: mean valid share 100.00%, >=90% valid 100.00%  shuffled: mean 98.98%, >=90% valid 97.70%
+[coverage]   test  physical   donor rule same_scenario clips   9503  shuffled mean valid share 99.07%  >=90% valid 98.15%
+[coverage]   test  physical   donor rule same_take     clips  12787  shuffled mean valid share 98.91%  >=90% valid 97.37%
+[coverage] test  procedural clips  13105  real: mean valid share 100.00%, >=90% valid 100.00%  shuffled: mean 99.81%, >=90% valid 99.49%
+[coverage]   test  procedural donor rule same_scenario clips    749  shuffled mean valid share 99.93%  >=90% valid 99.60%
+[coverage]   test  procedural donor rule same_take     clips  12356  shuffled mean valid share 99.81%  >=90% valid 99.48%
+```
+
+## Job 709888
 ```
 ok zero-init identity
 ok gaze frame k -> pose token k
