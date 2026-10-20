@@ -1,0 +1,13 @@
+Gaze alignment decision, 2026-10-20 (Valerio Costa)
+
+Decision: proceed on the documented timestamps. Gaze and pose share the Aria device clock (MPS docs:
+closed_loop_trajectory and general_eye_gaze tracking_timestamp_us are both device time); no shift is applied.
+
+Evidence (docs/gaze.md, "Checks before training", results/gaze_checks.md, job 709871): the eye-head lag peaks at
++100 to +130 ms in both raw 10 Hz gaze and our 20 Hz features, so the pipeline adds nothing; per take it ranges
++90 to +250 ms (median +140) and differs by activity (about +100 ms Dance, +230 ms Soccer), which a clock error
+would not do and which fits eyes leading the head in gaze shifts. At 10 Hz the vestibulo-ocular reflex cannot be
+isolated (eye/head rate ratio -0.03 against about -1 expected), so alignment is not verified directly.
+
+Reported as an untested assumption: "gaze and pose share a clock; alignment could not be verified directly at
+10 Hz; the observed lag varies with activity, as expected when the eyes lead the head."

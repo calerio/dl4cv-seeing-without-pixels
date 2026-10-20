@@ -269,3 +269,7 @@ Checks before the first run:
   the layer's weights moving.
 - **If time runs short**, cut in this order: G+B', then the frozen pair (GF and GF-shuf together, all seeds: GF
   alone cannot support a claim without three seeds of GF-shuf). Keep G0, GT and GT-shuf.
+
+## Alignment decision (20 Oct 2026)
+Proceed on the documented timestamps, no shift (`data_files/egoexo4d/gaze_alignment_decision.txt`). The vestibulo-
+ocular criterion fixed above stays failed and is reported as such; alignment is an untested assumption in the report.
