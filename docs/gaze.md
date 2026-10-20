@@ -27,11 +27,10 @@ entirely between our own runs, all starting from the released checkpoint.
   in `results/gaze_check.md`, "Gaze file columns").
 - 10 Hz, starting 0.03 s (median) after the trajectory, on the same device clock.
 - Coverage: every validation and test clip; 359 of 159,186 training clips (4 takes) have no gaze. The coverage check
-  used the CSVs' `start_time`/`end_time`, which are the bounds of the stored trajectory window
-  (`data_prep/step3_build_longseq.py:79-80`), and every model input window lies inside it
-  (`datasets/egoexo4d_pretrain.py:212-214`), so by construction input windows should be covered too. This is
-  reasoned from the code, not measured on the input windows: the CPU check (code change 6) measures the share of
-  valid gaze frames over the model's actual input windows, per split and per activity type, before training.
+  used the labelled clip windows (`t0`-`t1`) of the released CSVs. The model's input window is wider, up to the
+  stored window (`data_prep/step3_build_longseq.py:80-81`; `datasets/egoexo4d_pretrain.py:212-214`), so coverage
+  there is not yet known. The CPU check (code change 6) measures the share of valid gaze frames over the model's
+  actual input windows, per split and per activity type, before training.
 
 ## Design
 1. **Start from the released model, not from experiment 1's B'.** Each experiment changes one thing against the
@@ -53,8 +52,8 @@ entirely between our own runs, all starting from the released checkpoint.
    `random_start + k*sample_rate` (lines 217-218). The gaze time of pose frame k is therefore
    `traj_t0_us + (start_time + 0.05*(random_start + k*sample_rate))*1e6`, with `traj_t0_us` from
    `scripts/gaze_check/fetch_traj_t0.py`. Two checks before training (CPU job, code change 6):
-   - **1 kHz rows.** For the clip with the largest `end_time` in each take, `end_time` must equal `(traj_t1_us - traj_t0_us)/1e6` within
-     a few ms (the rows-are-milliseconds assumption).
+   - **1 kHz rows.** In each take, `max(end_time)` must be at most `(traj_t1_us - traj_t0_us)/1e6`, and equal to it
+     within a few ms for a clip cut at the take's end (the rows-are-milliseconds assumption).
    - **Positive check, vestibulo-ocular reflex.** When the head turns, the eyes counter-rotate in the head. Over a
      sample of clips, eye-in-head yaw rate must anti-correlate with head yaw rate from the poses, with the peak at lag
      0 (+-1 frame). A misaligned gaze shows the peak elsewhere or none at all; this is the only check that proves
@@ -137,7 +136,7 @@ and 2 then test. The frozen runs follow GT's decision.
 Measured: one Ego-Exo4D epoch is about 8.3 min on one A100 (D1); experiment 1's 20-epoch runs took 3.3 h each
 training only (job times recorded in `results/hard_negatives.md`); testing adds up to about 1 h per run (the test
 jobs' time limit). Full runs (G0, GT, GT-shuf): about 3.3 h of training plus test each. Frozen runs (GF, GF-shuf): no encoder gradients, **Open:** time them in the smoke test; budget
-assumes 3 h. Per seed about 16 GPU-hours; three seeds about 48, about 24 h of wall time on our 2 GPUs (2 jobs
+assumes 3 h. Per seed about 16 GPU-hours of training plus up to 5 of testing; three seeds about 63 in all, about 24 h of wall time on our 2 GPUs (2 jobs
 running, 4 queued at most), plus the pilot's diagnostics (about 1 h). The pilot alone is about 8 h. These wall
 times assume both GPUs are free: anything else of ours on the cluster (follow-up runs of experiments 1 or 2)
 pushes the 4 Nov date in `SCHEDULE.md` back by its own length.
@@ -155,7 +154,9 @@ pushes the 4 Nov date in `SCHEDULE.md` back by its own length.
    `diagnose_within_take.py` builds its arguments the same way (today it hard-codes them, lines 30-33) and applies
    the shuffle for the -shuf runs.
 6. A CPU check script: Design 3's two alignment checks, building and checking the donor map (same take, different
-   clip, at least one window apart), and the validity-flag share per split.
+   clip, at least one window apart), and the validity-flag share over the input windows, per split and per activity type
+   (procedural / physical). If the procedural and physical shares differ by more than 5 points, the gap is reported
+   and the comparison is repeated on clips with at least 90% valid gaze as a secondary analysis.
 
 Checks before the first run:
 - The reproduction check with all flags off and with `--gaze_input` on and `--gaze none`: both must give 44.81. This
