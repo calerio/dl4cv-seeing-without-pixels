@@ -109,8 +109,8 @@ def test_donor_rules_synthetic():
   assert d.loc['a1', 'donor_save_id'] == 'a2' and d.loc['a1', 'donor_rule'] == 'same_take'
   assert d.loc['b1', 'donor_rule'] == 'same_scenario' and d.loc['b1', 'donor_take'] == 'A'
   assert d.loc['c1', 'donor_rule'] == 'none'  # only take of its scenario
-  # A take without gaze gets no same-take donor and falls back to another take of its scenario.
   assert d.loc['e1', 'donor_rule'] == 'none'  # the only eval Cooking take: no donor from a train take
+  # A take without gaze gets no same-take donor and falls back to another take of its scenario.
   d2 = gaze.build_donor_map(w, {'B', 'C', 'E'}, scen, grp).set_index('save_id')
   assert d2.loc['a1', 'donor_rule'] == 'same_scenario' and d2.loc['a1', 'donor_take'] == 'B'
   print('ok donor rules on a synthetic map')

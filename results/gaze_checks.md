@@ -83,7 +83,7 @@ code revision a2194b1
 [coverage]   test  procedural donor rule same_take     clips  12356  shuffled mean valid share 99.81%  >=90% valid 99.48%
 ```
 
-## Job 709879
+## Job 709879 (unit tests at code a2194b1; the test job does not print its revision)
 ```
 ok zero-init identity
 ok gaze frame k -> pose token k
@@ -126,7 +126,7 @@ code revision ee408bd
 [coverage]   test  procedural donor rule same_take     clips  12356  shuffled mean valid share 99.81%  >=90% valid 99.48%
 ```
 
-## Job 709888
+## Job 709888 (unit tests at code ee408bd; the test job does not print its revision)
 ```
 ok zero-init identity
 ok gaze frame k -> pose token k

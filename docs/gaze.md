@@ -167,8 +167,10 @@ collate).
 - **Donor map (rebuilt 20 Oct with the two rules in Design 6):** `data_files/egoexo4d/gaze_donors_v1.csv.gz`,
   207,176 clip windows, every one with a donor; checks asserted (same-take donors: different window, no overlap in
   time; cross-take donors: different take, same scenario, same split group; every donor take has gaze). Built by
-  job 709883 running code ee408bd (`sbatch ~/dl4cv/gaze_prep.sh donors coverage`); content sha256 2172ba95...,
-  printed in the log. The committed file is that job's output. Valid-gaze share of the shuffled input, by rule: see the coverage results and `results/gaze_checks.md`. Clips (CSV rows, as the model sees them) by rule:
+  job 709883 running code ee408bd (`sbatch ~/dl4cv/gaze_prep.sh donors coverage`). The committed file is that
+  job's output: `zcat src/camformer/data_files/egoexo4d/gaze_donors_v1.csv.gz | sha256sum` must print the hash in
+  the job's log (the hash is of the uncompressed CSV text):
+  2172ba9551d8d09b40b9fa9f82d0a177fc5bb0692d6f9c22e5c938383b848ffa. Valid-gaze share of the shuffled input, by rule: see the coverage results and `results/gaze_checks.md`. Clips (CSV rows, as the model sees them) by rule:
 
   | Split | Type | Clips | Same take | Other take, same scenario |
   |---|---|---|---|---|
@@ -190,8 +192,7 @@ collate).
   | real gaze | +0.053 | -0.028 | -0.132 | -0.218 | **-0.247** | -0.224 | -0.180 |
   | donor gaze (control) | +0.001 | +0.002 | +0.002 | +0.002 | +0.002 | +0.002 | +0.002 |
 
-  Real gaze is clearly related to head motion compared with the donor control (r about -0.25 on the vertical
-  device axis, about 0 with donor gaze), but the peak is at +2 frames: the gaze at a pose frame's time matches head motion about 100 ms later. Per
+  Real gaze correlates with head motion at r about -0.25 on device axis 0 (about 0 with donor gaze), but the peak is at +2 frames: the gaze at a pose frame's time matches head motion about 100 ms later. Per
   the rule above, training does not start until this is understood. (Job 709477, code d900001,
   `sbatch ~/dl4cv/gaze_prep.sh`.) The follow-up below shows this check cannot tell a timing error from normal
   eye-head behaviour.
@@ -228,6 +229,10 @@ collate).
     pinned with a synthetic known rotation, then a scan of |r|; or gaze projected into the RGB frame, which needs
     video we do not have), or (b) proceeding on the documented timestamps (same device clock, Aria docs) as an
     **untested assumption**, stated as such in the report, not as a passed check. Logs: `results/gaze_checks.md`.
+    The choice is recorded, with its date and (for (a)) the test and its threshold, in
+    `src/camformer/data_files/egoexo4d/gaze_alignment_decision.txt`, committed before any run; `gaze_seed.sh`
+    refuses a full seed until that file exists. The one-epoch smoke test (`bash ~/dl4cv/gaze_seed.sh smoke`) does
+    not need it.
 
 
 ## Code changes (each behind a flag; defaults keep the authors' behaviour)
