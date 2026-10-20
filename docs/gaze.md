@@ -136,8 +136,9 @@ and 2 then test. The frozen runs follow GT's decision.
 Measured: one Ego-Exo4D epoch is about 8.3 min on one A100 (D1); experiment 1's 20-epoch runs took 3.3 h each
 training only (job times recorded in `results/hard_negatives.md`); testing adds up to about 1 h per run (the test
 jobs' time limit). Full runs (G0, GT, GT-shuf): about 3.3 h of training plus test each. Frozen runs (GF, GF-shuf): no encoder gradients, **Open:** time them in the smoke test; budget
-assumes 3 h. Per seed about 16 GPU-hours of training plus up to 5 of testing; three seeds about 63 in all, about 24 h of wall time on our 2 GPUs (2 jobs
-running, 4 queued at most), plus the pilot's diagnostics (about 1 h). The pilot alone is about 8 h. These wall
+assumes 3 h. Per seed about 16 GPU-hours of training plus up to 5 of testing; three seeds about 63 in all, about 32 h of wall time on our 2 GPUs (2 jobs
+running, 4 queued at most), plus the pilot's diagnostics (about 1 h). The pilot's seed-0 training is about 8 h; its testing (about 2.5 h) runs only after the gate decision. All of
+it fits well before the 4 Nov date in `SCHEDULE.md`. These wall
 times assume both GPUs are free: anything else of ours on the cluster (follow-up runs of experiments 1 or 2)
 pushes the 4 Nov date in `SCHEDULE.md` back by its own length.
 
