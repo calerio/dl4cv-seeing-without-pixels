@@ -142,6 +142,34 @@ it fits well before the 4 Nov date in `SCHEDULE.md`. These wall
 times assume both GPUs are free: anything else of ours on the cluster (follow-up runs of experiments 1 or 2)
 pushes the 4 Nov date in `SCHEDULE.md` back by its own length.
 
+## Checks before training: results (20 Oct 2026)
+CPU job 709477 (`sbatch ~/dl4cv/gaze_prep.sh`, `gaze_prep.py`, code d900001); unit tests `python test_gaze.py` on
+the login node, all passing (zero-init identity, gaze frame k on pose token k, dataset time of frame k, donor map,
+collate).
+- **Gaze cache:** 3,597 takes; 4 without a gaze file or trajectory start (the 359 training clips noted above).
+- **1 kHz rows: passed.** Over 3,601 takes, max(`end_time`) minus trajectory length is at most +0.001 s; no clip
+  ends after its trajectory; 3,360 takes have a clip cut within 5 ms of the end.
+- **Coverage over the model's input windows: passed.** Valid gaze share, mean per clip: train 99.67% physical and
+  100.00% procedural (30,000 sampled training clips, seed 0); validation and test 100.00% in both types. No gap
+  between types, so no secondary analysis is needed.
+- **Donor map:** `data_files/egoexo4d/gaze_donors_v1.csv.gz`, 207,176 clip windows. Every donor is in the same take,
+  a different clip, and does not overlap in time (asserted). **But 65,301 windows (32%) have no valid donor**: in
+  short takes no other window is far enough away. Their shuffled gaze would be all zeros (flag 0), so a -shuf run
+  would differ from its real twin in how often gaze is present, not only in which gaze. **Open, needs a decision.**
+- **Vestibulo-ocular check: FAILED the criterion fixed above** (peak at lag 0, +-1 frame). Correlation of eye-in-head
+  yaw rate (frame k) with head rotation rate about device axis 0 (frame k + lag), 1,000 validation clips:
+
+  | lag (frames of 50 ms) | -2 | -1 | 0 | +1 | **+2** | +3 | +4 |
+  |---|---|---|---|---|---|---|---|
+  | real gaze | +0.053 | -0.028 | -0.132 | -0.218 | **-0.247** | -0.224 | -0.180 |
+  | donor gaze (control) | +0.001 | +0.002 | +0.002 | +0.002 | +0.002 | +0.002 | +0.002 |
+
+  The reflex is clearly there (strong anticorrelation on the vertical device axis, none with donor gaze, almost none
+  on the other two axes), so gaze and poses are on the same clock, but the peak is at +2 frames: the gaze at a pose
+  frame's time matches head motion about 100 ms later. A gaze timestamp convention (e.g. timestamps at the start of
+  a 10 Hz averaging window) or a fixed offset between the two streams would both explain it. Per the rule above,
+  training does not start until this is understood and the offset either explained or corrected and re-checked.
+
 ## Code changes (each behind a flag; defaults keep the authors' behaviour)
 1. `datasets/egoexo4d_pretrain.py`: `--gaze {none,real,shuffled}`; load each take's gaze CSV once, return the 4-D
    gaze features for the window's frames next to the poses (window code at lines 207-217).

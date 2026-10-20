@@ -84,7 +84,8 @@ def test_donor_map():
   assert (d['save_id'] != d['donor_save_id']).all()
   assert not ((d['d_start_time'] < d['end_time']) & (d['d_end_time'] > d['start_time'])).any()
   # Training, testing and diagnostics all read the same file through gaze.load_donors().
-  assert gaze.load_donors.__defaults__ == (gaze.DONOR_FILE,)
+  m = gaze.load_donors()
+  assert m is gaze.load_donors() and len(m) == len(donors)
   print(f'ok donor map: {len(d)} of {len(donors)} clips have a same-take, non-overlapping donor')
 
 
