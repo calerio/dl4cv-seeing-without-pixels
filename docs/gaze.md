@@ -273,3 +273,6 @@ Checks before the first run:
 ## Alignment decision (20 Oct 2026)
 Proceed on the documented timestamps, no shift (`data_files/egoexo4d/gaze_alignment_decision.txt`). The vestibulo-
 ocular criterion fixed above stays failed and is reported as such; alignment is an untested assumption in the report.
+Consequence for the results: if gaze is offset from the poses by 2 to 3 frames, a null or weak GT - G0 result is
+partly confounded with misalignment, so a null is reported as "no gain with gaze as aligned here", not as "gaze does
+not help".
