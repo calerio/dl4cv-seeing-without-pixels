@@ -81,7 +81,13 @@ entirely between our own runs, all starting from the released checkpoint.
    - **Donor slice.** The donor's gaze is taken over the donor's own stored window at the same relative frames
      (`random_start + k*sample_rate`), so in training it is redrawn each epoch together with the clip's own window,
      exactly as real gaze would be; at test time the window is the deterministic test one. Padded with the validity
-     flag off if the donor's window is shorter. Donors are drawn only among clips of the take that have gaze.
+     flag off if the donor's window is shorter.
+   - **Which clips get which donor (decided 20 Oct, before any gaze run).** Every clip in a -shuf run gets realistic
+     but wrong gaze; none gets zeros. Rule 1, used whenever possible: a different stored window of the **same take**
+     that has gaze and is at least one window away. Rule 2, only for clips whose take has no such window (mostly
+     short takes): a window of a **different take of the same scenario** (e.g. another Cooking take), drawn with the
+     same fixed data seed. The donor CSV records the donor's take and which rule supplied it (`donor_rule`:
+     `same_take` or `same_scenario`). Counts per split and activity type are under "Checks before training".
 7. **Everything else** as experiment 1's A: 20 epochs, batch 1,024, lr 1e-4, random batches, authors' loss, last
    checkpoint tested. Frozen runs use the same lr for `gaze_proj`.
 
@@ -152,10 +158,23 @@ collate).
 - **Coverage over the model's input windows: passed.** Valid gaze share, mean per clip: train 99.67% physical and
   100.00% procedural (30,000 sampled training clips, seed 0); validation and test 100.00% in both types. No gap
   between types, so no secondary analysis is needed.
-- **Donor map:** `data_files/egoexo4d/gaze_donors_v1.csv.gz`, 207,176 clip windows. Every donor is in the same take,
-  a different clip, and does not overlap in time (asserted). **But 65,301 windows (32%) have no valid donor**: in
-  short takes no other window is far enough away. Their shuffled gaze would be all zeros (flag 0), so a -shuf run
-  would differ from its real twin in how often gaze is present, not only in which gaze. **Open, needs a decision.**
+- **Donor map (rebuilt 20 Oct with the two rules in Design 6):** `data_files/egoexo4d/gaze_donors_v1.csv.gz`,
+  207,176 clip windows, every one with a donor; checks asserted (same-take donors: different window, no overlap in
+  time; cross-take donors: different take, same scenario; every donor take has gaze). Job 709874, code 77f7cc7,
+  `sbatch ~/dl4cv/gaze_prep.sh donors`. Clips (CSV rows, as the model sees them) by rule:
+
+  | Split | Type | Clips | Same take | Other take, same scenario |
+  |---|---|---|---|---|
+  | train | physical | 104,920 | 42,146 (40.2%) | 62,774 (59.8%) |
+  | train | procedural | 54,266 | 51,050 (94.1%) | 3,216 (5.9%) |
+  | val | physical | 26,493 | 9,684 (36.6%) | 16,809 (63.4%) |
+  | val | procedural | 42,580 | 41,670 (97.9%) | 910 (2.1%) |
+  | test | physical | 22,290 | 12,787 (57.4%) | 9,503 (42.6%) |
+  | test | procedural | 13,105 | 12,356 (94.3%) | 749 (5.7%) |
+
+  Physical takes are short, so most physical clips need rule 2; procedural clips almost all use rule 1. The
+  procedural comparison (the pre-named split) is therefore nearly a pure same-take control, while on physical
+  clips the shuffled gaze also comes from a different person and session. Reported with the results.
 - **Vestibulo-ocular check: FAILED the criterion fixed above** (peak at lag 0, +-1 frame). Correlation of eye-in-head
   yaw rate (frame k) with head rotation rate about device axis 0 (frame k + lag), 1,000 validation clips:
 
@@ -169,6 +188,34 @@ collate).
   frame's time matches head motion about 100 ms later. A gaze timestamp convention (e.g. timestamps at the start of
   a 10 Hz averaging window) or a fixed offset between the two streams would both explain it. Per the rule above,
   training does not start until this is understood and the offset either explained or corrected and re-checked.
+- **Native-rate follow-up (20 Oct): the offset is not a pipeline artefact, and it is not a clean clock offset.
+  Training stays on hold.** `sbatch ~/dl4cv/gaze_prep.sh vor_native --vor_clips 3000`, job 709871, code e0abf27:
+  eye-in-head rate from the native 10 Hz gaze samples (central differences, no interpolation) against head rate
+  over the same two sample times shifted by the lag, -300 to +300 ms in 10 ms steps; 3,000 validation clips, 627
+  takes, 1,558,780 gaze samples.
+
+  | Scan | Most negative r at | r there | r at 0 ms |
+  |---|---|---|---|
+  | yaw vs head axis 0, all samples | +120 ms | -0.277 | -0.161 |
+  | pitch vs head axis 1, all samples | +130 ms | -0.258 | -0.163 |
+  | yaw, "VOR-only" samples (eye < 100 deg/s, head > 15 deg/s) | +150 ms | -0.078 | +0.035 |
+  | 20 Hz model features, yaw, central differences, all | +100 ms | -0.263 | -0.149 |
+
+  - Not the feature pipeline: native samples give the same offset as the 20 Hz features.
+  - Not a clean constant: per take (160 takes with a clear peak) the peak is always positive but spread from +90
+    to +250 ms (p10 to p90, median +140), and it differs by activity (median +100 ms Dance, +125 Basketball,
+    +150 Cooking, +185 Bike Repair, +230 Soccer). A clock offset would be the same for every activity.
+  - The reflex itself is not isolated at 10 Hz: on the "VOR-only" samples the eye/head gain is -0.03, where the
+    reflex would give about -1, and the correlation there is weak. At 10 Hz, eye movement is dominated by gaze
+    shifts, in which the eyes move ahead of the head by an amount that depends on the task, which fits an
+    activity-dependent lag of 100-250 ms. The sign conventions of eye yaw and head axis 0 are not pinned down, so
+    the scan cannot tell "eyes counter-rotate" from "eyes lead in the same direction".
+  - Consequence: the alignment criterion fixed above (peak at lag 0 +-1 frame) assumed the 10 Hz signal is
+    dominated by the reflex, which it is not, so the check cannot confirm or rule out a timing error. No shift is
+    applied. **Needs a decision before training:** either a different alignment test (e.g. one that uses the gaze
+    projected into the RGB frame, or a check at the level of individual saccade onsets), or accepting the
+    timestamps as documented (same device clock, Aria docs) and stating the open question in the report.
+
 
 ## Code changes (each behind a flag; defaults keep the authors' behaviour)
 1. `datasets/egoexo4d_pretrain.py`: `--gaze {none,real,shuffled}`; load each take's gaze CSV once, return the 4-D
