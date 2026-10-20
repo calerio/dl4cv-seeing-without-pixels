@@ -84,17 +84,31 @@ def step_donors(opts, frames):
   win = pd.concat([df[['save_id', 'take_name', 'start_time', 'end_time']] for df in frames.values()])
   win = win.drop_duplicates('save_id')
   with_gaze = {f[:-4] for f in os.listdir(gaze.GAZE_DIR) if f.endswith('.npz')}
-  donors = gaze.build_donor_map(win, with_gaze)
+  scen = pd.read_csv(_resolve_csv('scenario_cls.csv')).set_index('take_name')['task']
+  donors = gaze.build_donor_map(win, with_gaze, scen)
   donors.to_csv(gaze.DONOR_FILE, index=False)
-  # Checks: same take, different clip, no overlap in time, every clip present.
-  d = donors[donors['donor_save_id'] != ''].merge(win, on='save_id').merge(
-      win.add_prefix('d_'), left_on='donor_save_id', right_on='d_save_id')
-  same_take = (d['take_name'] == d['d_take_name']).all()
-  overlap = ((d['d_start_time'] < d['end_time']) & (d['d_end_time'] > d['start_time'])).sum()
-  print(f'[donors] {len(donors)} clip windows, {len(d)} with a donor, {len(donors) - len(d)} without; '
-        f'same take: {same_take}; overlapping in time: {overlap}; written to {gaze.DONOR_FILE}')
-  assert same_take and overlap == 0 and (d['save_id'] != d['donor_save_id']).all()
+  # Checks: every clip present; same-take donors are a different, non-overlapping window; cross-take donors are a
+  # different take of the same scenario; every donor take has gaze.
   assert set(donors['save_id']) == set(win['save_id'])
+  d = donors[donors['donor_rule'] != 'none'].merge(win, on='save_id').merge(
+      win.add_prefix('d_'), left_on='donor_save_id', right_on='d_save_id')
+  st, ss = d[d['donor_rule'] == 'same_take'], d[d['donor_rule'] == 'same_scenario']
+  assert (st['take_name'] == st['d_take_name']).all() and (st['save_id'] != st['donor_save_id']).all()
+  assert not ((st['d_start_time'] < st['end_time']) & (st['d_end_time'] > st['start_time'])).any()
+  assert (ss['take_name'] != ss['d_take_name']).all()
+  assert (ss['take_name'].map(scen) == ss['d_take_name'].map(scen)).all()
+  assert d['donor_take'].isin(with_gaze).all() and (d['donor_take'] == d['d_take_name']).all()
+  print(f'[donors] {len(donors)} clip windows written to {gaze.DONOR_FILE}; checks passed')
+  # How many clips (CSV rows, i.e. narrations, as the model sees them) get each kind of donor.
+  rule = donors.set_index('save_id')['donor_rule']
+  for split, df in frames.items():
+    r = df.assign(rule=df['save_id'].map(rule), type=np.where(df['take_name'].map(scen).isin(PROCEDURAL),
+                                                                'procedural', 'physical'))
+    for t, g in r.groupby('type'):
+      c = g['rule'].value_counts()
+      print(f'[donors] {split:5s} {t:10s} clips {len(g):6d}  same take {c.get("same_take", 0):6d} '
+            f'({100 * c.get("same_take", 0) / len(g):5.1f}%)  other take, same scenario '
+            f'{c.get("same_scenario", 0):6d} ({100 * c.get("same_scenario", 0) / len(g):5.1f}%)  none {c.get("none", 0)}')
 
 
 def step_coverage(opts, frames):

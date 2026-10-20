@@ -68,10 +68,11 @@ def features_at(times, take, gaze_dir=None, end_time=None):
 
 @functools.lru_cache(maxsize=None)
 def load_donors(path=DONOR_FILE):
-  """save_id -> (donor_save_id, donor_start_time, donor_end_time); donor_save_id is '' if the clip has none."""
+  """save_id -> (donor_save_id, donor_take, donor_start_time, donor_end_time, rule); donor_save_id '' if none."""
   df = pd.read_csv(path, keep_default_na=False)
   return {
-      r.save_id: (r.donor_save_id, float(r.donor_start_time or 0), float(r.donor_end_time or 0))
+      r.save_id: (r.donor_save_id, r.donor_take, float(r.donor_start_time or 0), float(r.donor_end_time or 0),
+                  r.donor_rule)
       for r in df.itertuples()
   }
 
@@ -79,8 +80,9 @@ def load_donors(path=DONOR_FILE):
 def clip_gaze(mode, row, frame_idx, frame_dt):
   """Gaze features for the stored frames `frame_idx` of a CSV row.
 
-  mode: 'real' (this clip), 'shuffled' (the committed donor clip of the same take, at the same relative frames,
-  flag 0 past the donor's window), or 'zero' (all zeros, for checking that a trained model uses gaze).
+  mode: 'real' (this clip), 'shuffled' (the committed donor clip, at the same relative frames, flag 0 past the
+  donor's window; the donor is in the same take when possible, otherwise in another take of the same scenario, see
+  build_donor_map), or 'zero' (all zeros, for checking that a trained model uses gaze).
   """
   frame_idx = np.asarray(frame_idx)
   if mode == 'zero':
@@ -89,30 +91,47 @@ def clip_gaze(mode, row, frame_idx, frame_dt):
   if mode == 'real':
     return features_at(row['start_time'] + rel, row['take_name'])
   if mode == 'shuffled':
-    donor, d_start, d_end = load_donors()[row['save_id']]
+    donor, d_take, d_start, d_end, _ = load_donors()[row['save_id']]
     if not donor:
       return np.zeros((len(frame_idx), GAZE_DIM), dtype=np.float32)
-    return features_at(d_start + rel, row['take_name'], end_time=d_end)
+    return features_at(d_start + rel, d_take, end_time=d_end)
   raise ValueError(f'unknown gaze mode {mode}')
 
 
-def build_donor_map(windows, takes_with_gaze, seed=20261020):
-  """One donor per clip window: same take, has gaze, a different window that does not overlap it in time.
+def build_donor_map(windows, takes_with_gaze, scenario_of, seed=20261020):
+  """One donor per clip window, so every clip in a shuffled-gaze run gets realistic but wrong gaze.
 
   windows: DataFrame with save_id, take_name, start_time, end_time (one row per distinct save_id).
-  The draw uses its own fixed seed, independent of any training seed. Clips without a valid donor get ''.
+  scenario_of: take_name -> activity scenario (e.g. 'Cooking').
+  Rule 'same_take' (primary): a different window of the same take, with gaze, not overlapping this window in time.
+  Rule 'same_scenario' (only if the take has no such window, mostly short takes): a window of a different take of
+  the same scenario, with gaze. The draw uses its own fixed seed, independent of any training seed. A clip that
+  still has no donor gets '' and rule 'none'.
   """
   rng = np.random.default_rng(seed)
+  w = windows.sort_values(['take_name', 'start_time', 'save_id']).reset_index(drop=True)
+  w['scenario'] = w['take_name'].map(scenario_of).fillna('')
+  pool = w[w['take_name'].isin(takes_with_gaze)]
+  by_scen = {sc: g for sc, g in pool.groupby('scenario')}
   rows = []
-  for take, g in windows.sort_values(['take_name', 'start_time', 'save_id']).groupby('take_name', sort=True):
+  for take, g in w.groupby('take_name', sort=True):
     ids = g['save_id'].to_numpy()
     s = g['start_time'].to_numpy()
     e = g['end_time'].to_numpy()
+    sc = g['scenario'].iloc[0]
     for k in range(len(g)):
       cand = np.where((e <= s[k]) | (s >= e[k]))[0] if take in takes_with_gaze else np.array([], dtype=int)
       if len(cand):
         j = int(rng.choice(cand))
-        rows.append((ids[k], ids[j], round(s[j], 5), round(e[j], 5)))
+        rows.append((ids[k], ids[j], take, round(s[j], 5), round(e[j], 5), 'same_take'))
+        continue
+      other = by_scen.get(sc)
+      other = other[other['take_name'] != take] if other is not None and sc else None
+      if other is not None and len(other):
+        r = other.iloc[int(rng.integers(len(other)))]
+        rows.append((ids[k], r['save_id'], r['take_name'], round(r['start_time'], 5), round(r['end_time'], 5),
+                     'same_scenario'))
       else:
-        rows.append((ids[k], '', '', ''))
-  return pd.DataFrame(rows, columns=['save_id', 'donor_save_id', 'donor_start_time', 'donor_end_time'])
+        rows.append((ids[k], '', '', '', '', 'none'))
+  return pd.DataFrame(rows, columns=['save_id', 'donor_save_id', 'donor_take', 'donor_start_time', 'donor_end_time',
+                                     'donor_rule'])

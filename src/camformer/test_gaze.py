@@ -2,7 +2,8 @@
 
 1. The zero-initialised gaze layer changes nothing.
 2. Gaze frame k lands on pose token k, and the dataset gives pose frame k the gaze at that frame's time.
-3. The committed donor map: every donor is in the same take, a different clip, not overlapping in time.
+3. The committed donor map: every clip has a donor; same-take donors are a different, non-overlapping window;
+   cross-take donors are another take of the same scenario.
 4. The collate pads gaze exactly like the poses.
 """
 
@@ -77,16 +78,35 @@ def test_donor_map():
   win = pd.concat([pd.read_csv(_resolve_csv(f))[['save_id', 'start_time', 'end_time']]
                    for f in ('train_v2.csv', 'val_v2.csv', 'test_alltasks_mcqv0.csv')]).drop_duplicates('save_id')
   win['take'] = win['save_id'].map(lambda s: '_'.join(s.split('_')[:-2]))
+  scen = pd.read_csv(_resolve_csv('scenario_cls.csv')).set_index('take_name')['task']
   assert set(donors['save_id']) == set(win['save_id'])
-  d = donors[donors['donor_save_id'] != ''].merge(win, on='save_id').merge(
+  d = donors[donors['donor_rule'] != 'none'].merge(win, on='save_id').merge(
       win.add_prefix('d_'), left_on='donor_save_id', right_on='d_save_id')
-  assert (d['take'] == d['d_take']).all()
-  assert (d['save_id'] != d['donor_save_id']).all()
-  assert not ((d['d_start_time'] < d['end_time']) & (d['d_end_time'] > d['start_time'])).any()
+  st, ss = d[d['donor_rule'] == 'same_take'], d[d['donor_rule'] == 'same_scenario']
+  # Same-take donors: same take, different window, at least one window away (no overlap in time).
+  assert (st['take'] == st['d_take']).all() and (st['save_id'] != st['donor_save_id']).all()
+  assert not ((st['d_start_time'] < st['end_time']) & (st['d_end_time'] > st['start_time'])).any()
+  # Cross-take donors: different take, same scenario, only where the take had no same-take donor.
+  assert (ss['take'] != ss['d_take']).all()
+  assert (ss['take'].map(scen) == ss['d_take'].map(scen)).all()
+  assert (d['donor_take'] == d['d_take']).all()
+  # Every clip has a donor.
+  none = (donors['donor_rule'] == 'none').sum()
+  assert none == 0, f'{none} clips without a donor'
   # Training, testing and diagnostics all read the same file through gaze.load_donors().
   m = gaze.load_donors()
   assert m is gaze.load_donors() and len(m) == len(donors)
-  print(f'ok donor map: {len(d)} of {len(donors)} clips have a same-take, non-overlapping donor')
+  print(f'ok donor map: {len(st)} same-take and {len(ss)} same-scenario donors, every clip has one')
+
+
+def test_donor_rules_synthetic():
+  w = pd.DataFrame({'save_id': ['a1', 'a2', 'b1', 'c1'], 'take_name': ['A', 'A', 'B', 'C'],
+                    'start_time': [0.0, 20.0, 0.0, 0.0], 'end_time': [10.0, 30.0, 10.0, 10.0]})
+  d = gaze.build_donor_map(w, {'A', 'B', 'C'}, {'A': 'Cooking', 'B': 'Cooking', 'C': 'Soccer'}).set_index('save_id')
+  assert d.loc['a1', 'donor_save_id'] == 'a2' and d.loc['a1', 'donor_rule'] == 'same_take'
+  assert d.loc['b1', 'donor_rule'] == 'same_scenario' and d.loc['b1', 'donor_take'] == 'A'
+  assert d.loc['c1', 'donor_rule'] == 'none'  # only take of its scenario
+  print('ok donor rules on a synthetic map')
 
 
 def test_collate():
@@ -105,5 +125,6 @@ if __name__ == '__main__':
   test_token_alignment()
   test_dataset_time_alignment()
   test_donor_map()
+  test_donor_rules_synthetic()
   test_collate()
   print('all gaze tests passed')
