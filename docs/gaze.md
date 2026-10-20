@@ -75,8 +75,8 @@ entirely between our own runs, all starting from the released checkpoint.
 Seeds 0, 1, 2 for G0, GF, GF-shuf, GT, GT-shuf. All runs of a seed on one code revision.
 
 ## Evaluation
-Ego-Exo4D 5-way test, motion-to-text, by type (procedural / physical) and overall (`score_mcq.py`, whose `n` column
-gives 2,621 procedural and 4,458 physical questions), and `compare_runs.py` with three seeds per setup (its
+Ego-Exo4D 5-way test, motion-to-text, by type (procedural / physical) and overall (`score_mcq.py`; 2,621 procedural and 4,458 physical
+questions, recorded in `results/hard_negatives.md`), and `compare_runs.py` with three seeds per setup (its
 two-level bootstrap over seeds and takes) for every interval below, including V - V-shuf. Nymeria and DynPose have no gaze and are not used.
 
 **Reporting rule, fixed now.** Primary split named in advance: procedural (the hypothesis). Expected interval
@@ -104,7 +104,7 @@ overstate a gain; that is acceptable for a go/no-go, never for a claim.)
 
 ## Compute
 Measured: one Ego-Exo4D epoch is about 8.3 min on one A100 (D1); experiment 1's 20-epoch runs took 3.3 h each
-including their test (jobs 705874-705876 ran two runs each in 5.7 to 6.7 h; 705877 ran one in 3.3 h). Full runs (G0, GT,
+including their test (job times recorded in `results/hard_negatives.md`). Full runs (G0, GT,
 GT-shuf): about 3.3 h each, test included. Frozen runs (GF, GF-shuf): no encoder gradients, **Open:** time them in the smoke test; budget
 assumes 3 h. Per seed about 16 GPU-hours; three seeds about 48, about 24 h of wall time on our 2 GPUs (2 jobs
 running, 4 queued at most), plus the pilot's diagnostics (about 1 h). The pilot alone is about 8 h.
