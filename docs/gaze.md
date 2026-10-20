@@ -21,10 +21,13 @@ entirely between our own runs, all starting from the released checkpoint.
 
 ## Data (measured, `results/gaze_check.md`)
 - Source: `takes/<take>/eye_gaze/general_eye_gaze.csv` (Aria MPS), already on the cluster for every take. Columns used:
-  `tracking_timestamp_us`, `left_yaw_rads_cpf`, `right_yaw_rads_cpf`, `pitch_rads_cpf`, `depth_m` (seen in the file
-  header on the cluster, 20 Oct).
+  `tracking_timestamp_us`, `left_yaw_rads_cpf`, `right_yaw_rads_cpf`, `pitch_rads_cpf`, `depth_m` (header recorded
+  in `results/gaze_check.md`, "Gaze file columns").
 - 10 Hz, starting 0.03 s (median) after the trajectory, on the same device clock.
-- Coverage: every validation and test clip; 359 of 159,186 training clips (4 takes) have no gaze.
+- Coverage of the labelled clip window (`start_time` to `end_time`): every validation and test clip; 359 of 159,186
+  training clips (4 takes) have no gaze. The model's input window is wider than the labelled clip
+  (`datasets/egoexo4d_pretrain.py:212-214`), so frames near a take's start or end may lack gaze even where the clip is
+  covered; the CPU check (code change 6) measures the validity-flag share over the input window, per split.
 
 ## Design
 1. **Start from the released model, not from experiment 1's B'.** Each experiment changes one thing against the
@@ -32,24 +35,30 @@ entirely between our own runs, all starting from the released checkpoint.
    with experiment 1's baseline A. Gaze on top of B' would mix two changes; it is an optional extra run (G+B'), cut first.
 2. **Gaze features per pose frame.** For each pose frame (20 Hz), gaze is linearly interpolated from the 10 Hz samples
    at the frame's time: yaw (mean of left and right eye), pitch, and log depth, plus a validity flag (0 where no gaze
-   sample lies within 0.2 s, and for the 359 clips without gaze). Angles are already in the Aria central-pupil frame
+   sample lies within 0.2 s, and for the 359 clips without gaze). Gaze is cut with the same `random_start`,
+   `random_end` and stride as the poses (`egoexo4d_pretrain.py:212-217`), and follows the same path when a sample is
+   redrawn (line 223). Angles are already in the Aria central-pupil frame
    (`_cpf`), which moves with the head, so gaze is "where the eyes point relative to the head": exactly the part the
    trajectory does not carry. 4 numbers per frame.
 3. **Alignment.** Frame index i of the stored trajectory corresponds to time i x 50 ms after the trajectory's first row
    (20 Hz, `pre_sample_rate`). Gaze time is `tracking_timestamp_us` minus the trajectory's first timestamp
    (`scripts/gaze_check/fetch_traj_t0.py`). **Open:** check that i x 50 ms matches the clip's `start_time` in the CSVs
    for a sample of clips (CPU job), before training.
-4. **How gaze enters the model.** A new linear layer `gaze_proj` (4 -> 128) whose output is added to each pose frame's
-   input token, after `in_proj` (`models/cm_encoder.py:121`) and before the positional table (line 164). It is
-   initialised to zero, so at step 0 the model is exactly the released one (same idea as the domain token, line 101).
+4. **How gaze enters the model.** A new linear layer `gaze_proj` (4 -> 128) whose output is added to the pose tokens
+   `h1` right after `in_proj` (`models/cm_encoder.py:121`), before the gravity token is prepended (line 140), so gaze
+   frame i lands on pose token i; the branch without gravity (line 146) gets the same add. A unit test checks that
+   alignment. It is initialised to zero, so at step 0 the model is exactly the released one (same idea as the domain token, line 101).
    The gravity token is untouched.
 5. **Two ways to train it** (README item 3):
    - **Frozen (GF):** the released encoder is frozen; only `gaze_proj` trains (640 parameters). Asks: can gaze be
      bolted on without touching what the model knows?
    - **Full (GT):** encoder and `gaze_proj` train together, as in experiment 1.
 6. **Control for "more parameters / more training".** Each gaze run has a twin that gets gaze from a different clip of
-   the same take, chosen at random (GF-shuf, GT-shuf): same input statistics, same parameters and training, no
-   information about this clip. If a gain is real, gaze must beat the shuffled twin, not only the no-gaze baseline.
+   the same take (GF-shuf, GT-shuf): same input statistics, same parameters and training, no information about this
+   clip. If a gain is real, gaze must beat the shuffled twin, not only the no-gaze baseline. Details, fixed now: the
+   donor clip is a fixed random choice per clip (seeded), in training and at test time alike; the donor's gaze is
+   cut over a window of the same length starting at the donor's own window start, and padded with the validity flag
+   off if the donor's window is shorter; donors are drawn only among clips of the take that have gaze.
 7. **Everything else** as experiment 1's A: 20 epochs, batch 1,024, lr 1e-4, random batches, authors' loss, last
    checkpoint tested. Frozen runs use the same lr for `gaze_proj`.
 
@@ -66,11 +75,15 @@ entirely between our own runs, all starting from the released checkpoint.
 Seeds 0, 1, 2 for G0, GF, GF-shuf, GT, GT-shuf. All runs of a seed on one code revision.
 
 ## Evaluation
-Ego-Exo4D 5-way test, motion-to-text, by type (procedural / physical) and overall (`score_mcq.py`), and
-`compare_runs.py` with three seeds per setup. Nymeria and DynPose have no gaze and are not used.
+Ego-Exo4D 5-way test, motion-to-text, by type (procedural / physical) and overall (`score_mcq.py`, whose `n` column
+gives 2,621 procedural and 4,458 physical questions), and `compare_runs.py` with three seeds per setup (its
+two-level bootstrap over seeds and takes) for every interval below, including V - V-shuf. Nymeria and DynPose have no gaze and are not used.
 
-**Reporting rule, fixed now.** Primary split named in advance: procedural (the hypothesis). Margins as in
-experiment 1: the procedural test (2,621 questions) resolves about 2 points, the full test (7,079) about 1.5.
+**Reporting rule, fixed now.** Primary split named in advance: procedural (the hypothesis). Expected interval
+widths come from experiment 1's three-seed intervals (`results/hard_negatives.md`): half-widths about 1.2 points on
+procedural, 1.2 on physical and 0.9 overall. The margins below are set from those: the equivalence margin of +-2 is
+wider than one half-width so that it can pass when two variants are truly equal, and the -1 floor is the one used in
+experiment 1.
 - "Gaze helps" (for a variant V in {GF, GT}) is claimed only if, on procedural questions, the 95% interval of
   V - G0 is above zero **and** the 95% interval of V - V-shuf is above zero. Both must hold; the second rules out a
   gain from extra parameters or training alone.
@@ -82,13 +95,17 @@ experiment 1: the procedural test (2,621 questions) resolves about 2 points, the
 
 **Pilot gate, on training data only.** Seed 0 of all five runs first. Seeds 1 and 2 run only if (a) every run
 finished, and (b) on the within-take 5-way questions built from training takes (`diagnose_within_take.py`, 5,000
-questions, seed 0, extended to pass gaze), GT beats both G0 and GT-shuf by at least 1.0 point. If (b) fails, we report
-seed 0 with the diagnosis and stop. The test set is not used for this decision. (Training-take accuracy can
+questions, seed 0, extended to pass gaze), GT beats both G0 and GT-shuf by at least 1.5 points. One accuracy on 5,000
+questions has a standard error of about 0.7 points, and plain fine-tuning moved this score by about 0.6 (D3), so 1.5
+is about twice the noise. The frozen runs follow GT's decision. If (b) fails, we report seed 0 with the diagnosis and
+stop. The pilot runs are **not** scored on the test until the gate decision is written in this file: the training
+jobs run without the automatic test step, and testing is submitted after the decision. (Training-take accuracy can
 overstate a gain; that is acceptable for a go/no-go, never for a claim.)
 
 ## Compute
-Measured: one Ego-Exo4D epoch is about 9 min on one A100 (D1, experiment 1). Full runs (G0, GT, GT-shuf): 20 epochs,
-about 3.3 h each. Frozen runs (GF, GF-shuf): no encoder gradients, **Open:** time them in the smoke test; budget
+Measured: one Ego-Exo4D epoch is about 8.3 min on one A100 (D1); experiment 1's 20-epoch runs took 3.3 h each
+including their test (jobs 705874-705876 ran two runs each in 5.7 to 6.7 h; 705877 ran one in 3.3 h). Full runs (G0, GT,
+GT-shuf): about 3.3 h each, test included. Frozen runs (GF, GF-shuf): no encoder gradients, **Open:** time them in the smoke test; budget
 assumes 3 h. Per seed about 16 GPU-hours; three seeds about 48, about 24 h of wall time on our 2 GPUs (2 jobs
 running, 4 queued at most), plus the pilot's diagnostics (about 1 h). The pilot alone is about 8 h.
 
