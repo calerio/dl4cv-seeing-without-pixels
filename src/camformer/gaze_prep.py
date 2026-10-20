@@ -172,9 +172,130 @@ def step_vor(opts, frames):
       print(f'[vor]   device axis {ax}: ' + ' '.join(line))
 
 
+def _head_angles(traj):
+  """Cumulative head rotation (rad) about each device axis at the stored frames, from consecutive orientations."""
+  from scipy.spatial.transform import Rotation as R
+  r = R.from_quat(traj[:, 3:7])
+  rel = (r[:-1].inv() * r[1:]).as_rotvec()  # small rotations in the device frame of the earlier pose
+  return np.vstack([np.zeros((1, 3)), np.cumsum(rel, axis=0)])
+
+
+def _corr(a, b):
+  return float(np.corrcoef(a, b)[0, 1]) if len(a) > 2 else float('nan')
+
+
+def step_vor_native(opts, frames):
+  """Sharper alignment check at gaze's own 10 Hz timestamps, lags -300..+300 ms in 10 ms steps.
+
+  Eye-in-head rate: central difference of the native gaze samples (yaw, pitch), no interpolation. Head rate: the
+  head's cumulative rotation about the matching device axis (axis 0 for yaw, axis 1 for pitch; the stored ego frame
+  has x down, y left, z forward), interpolated at the same two sample times shifted by the lag, so both rates have
+  the same bandwidth. 'All' uses every sample; 'VOR' keeps samples without saccades (eye speed < 100 deg/s) during
+  steady head rotation (head speed > 15 deg/s over the surrounding 0.8 s). Also reports the peak lag per take, and
+  the same scan on the 20 Hz model-input features (lags in 50 ms frames) to see whether the feature pipeline adds a
+  shift. A peak at a positive lag means the gaze recorded at time t matches head motion at t + lag.
+  """
+  a = argparse.Namespace(use_pi3_pose=False, pre_sample_rate=50, sample_rate=1, encode_pose=11, ego_visible=False,
+                         sample_dur=True, scenario='all', take_duration=8, test_take_duration=4, start_ratio=0.2,
+                         test_time_ratio=0.5, gaze='real')
+  ds = EgoExo4DCameraPoseLongSeqForPretraining(a, 'val')
+  scen = pd.read_csv(_resolve_csv('scenario_cls.csv')).set_index('take_name')['task']
+  rng = random.Random(1)
+  idx = rng.sample(range(len(ds)), min(opts.vor_clips, len(ds)))
+  lags = np.arange(-300, 301, 10) / 1e3
+  flags = np.arange(-6, 7)
+  rec = {k: [] for k in ('take', 'eye_y', 'eye_p', 'speed', 'hspeed')}
+  hy, hp = [], []
+  frec = {k: [] for k in ('eye_y', 'speed', 'hspeed')}
+  fhy = []
+  deg = 180 / np.pi
+  for i in idx:
+    row = ds.df.iloc[i]
+    traj = ds._load_cam_traj(row)
+    n = len(traj)
+    if n < 40:
+      continue
+    tt = row['start_time'] + ds.frame_dt * np.arange(n)
+    th = _head_angles(traj)
+    g = gaze.load_take(row['take_name'])
+    if g is None:
+      continue
+    t, yaw, pitch, _ = g
+    m = (t > tt[0] + 0.45) & (t < tt[-1] - 0.45)
+    t, yaw, pitch = t[m], yaw[m], pitch[m]
+    if len(t) < 5:
+      continue
+    tl, tr = t[:-2], t[2:]
+    span = tr - tl
+    ok = (span > 0.15) & (span < 0.25)
+    tl, tr, span = tl[ok], tr[ok], span[ok]
+    ey = (yaw[2:] - yaw[:-2])[ok] / span
+    ep = (pitch[2:] - pitch[:-2])[ok] / span
+    head = lambda ax, a_, b_: (np.interp(b_, tt, th[:, ax]) - np.interp(a_, tt, th[:, ax])) / (b_ - a_)
+    hy.append(np.stack([head(0, tl + L, tr + L) for L in lags], 1))
+    hp.append(np.stack([head(1, tl + L, tr + L) for L in lags], 1))
+    hs = np.hypot(head(0, tl - 0.3, tr + 0.3), head(1, tl - 0.3, tr + 0.3)) * deg
+    rec['take'] += [row['take_name']] * len(tl)
+    rec['eye_y'].append(ey); rec['eye_p'].append(ep)
+    rec['speed'].append(np.hypot(ey, ep) * deg); rec['hspeed'].append(hs)
+    # The same on the 20 Hz model-input features (what the first check used, with central differences).
+    f = gaze.clip_gaze('real', row, np.arange(n), ds.frame_dt)
+    k = np.arange(7, n - 7)
+    k = k[(f[k - 1, 3] > 0) & (f[k + 1, 3] > 0)]
+    if len(k) < 10:
+      continue
+    fy = (f[k + 1, 0] - f[k - 1, 0]) / (2 * ds.frame_dt)
+    fhy.append(np.stack([(th[k + 1 + L, 0] - th[k - 1 + L, 0]) / (2 * ds.frame_dt) for L in flags], 1))
+    frec['eye_y'].append(fy)
+    frec['speed'].append(np.abs(fy) * deg)
+    frec['hspeed'].append(np.abs((th[k + 6, 0] - th[k - 6, 0]) / (12 * ds.frame_dt)) * deg)
+  take = np.array(rec['take'])
+  ey, ep = np.concatenate(rec['eye_y']), np.concatenate(rec['eye_p'])
+  speed, hspeed = np.concatenate(rec['speed']), np.concatenate(rec['hspeed'])
+  hy, hp = np.concatenate(hy), np.concatenate(hp)
+  vor = (speed < 100) & (hspeed > 15)
+  print(f'[vor_native] {len(idx)} validation clips, {len(ey)} native gaze samples, {vor.sum()} VOR-dominated, '
+        f'{len(set(take))} takes')
+  for name, e, h in (('yaw   vs head axis 0', ey, hy), ('pitch vs head axis 1', ep, hp)):
+    for sub, m in (('all', np.ones(len(e), bool)), ('VOR', vor)):
+      c = np.array([_corr(e[m], h[m, j]) for j in range(len(lags))])
+      j = int(np.nanargmin(c))
+      slope = np.polyfit(h[m, j], e[m], 1)[0]
+      line = ' '.join(f'{int(round(L * 1e3)):+d}:{c[q]:+.3f}' for q, L in enumerate(lags) if q % 5 == 0)
+      print(f'[vor_native] {name} {sub:3s}: most negative at {int(round(lags[j] * 1e3)):+d} ms '
+            f'(r {c[j]:+.3f}, r at 0 ms {c[len(lags) // 2]:+.3f}, eye/head gain {slope:+.2f}); {line}')
+  # Per take, VOR samples, yaw: where is each take's peak?
+  peaks, sc = [], []
+  for tk in sorted(set(take)):
+    m = vor & (take == tk)
+    if m.sum() < 40:
+      continue
+    c = np.array([_corr(ey[m], hy[m, j]) for j in range(len(lags))])
+    if np.isnan(c).all() or np.nanmin(c) > -0.2:
+      continue
+    peaks.append(lags[int(np.nanargmin(c))] * 1e3)
+    sc.append(scen.get(tk, ''))
+  peaks = np.array(peaks)
+  if len(peaks):
+    q = np.percentile(peaks, [10, 25, 50, 75, 90])
+    print(f'[vor_native] per-take peak (yaw, VOR, takes with >=40 samples and r <= -0.2): {len(peaks)} takes; '
+          f'p10/p25/median/p75/p90 = {q[0]:+.0f}/{q[1]:+.0f}/{q[2]:+.0f}/{q[3]:+.0f}/{q[4]:+.0f} ms; '
+          f'share > 0: {100 * (peaks > 0).mean():.0f}%, share within +-30 ms of 0: {100 * (np.abs(peaks) <= 30).mean():.0f}%')
+    for s_ in sorted(set(sc)):
+      p_ = peaks[np.array(sc) == s_]
+      print(f'[vor_native]   {s_:14s} takes {len(p_):3d}  median peak {np.median(p_):+.0f} ms')
+  fey, fsp, fhs = np.concatenate(frec['eye_y']), np.concatenate(frec['speed']), np.concatenate(frec['hspeed'])
+  fhy = np.concatenate(fhy)
+  for sub, m in (('all', np.ones(len(fey), bool)), ('VOR', (fsp < 100) & (fhs > 15))):
+    c = [_corr(fey[m], fhy[m, j]) for j in range(len(flags))]
+    j = int(np.nanargmin(c))
+    print(f'[vor_native] 20 Hz model features, yaw, central differences, {sub}: most negative at {flags[j] * 50:+d} ms; '
+          + ' '.join(f'{L * 50:+d}:{c[q]:+.3f}' for q, L in enumerate(flags)))
+
+
 def main():
   p = argparse.ArgumentParser()
-  p.add_argument('steps', nargs='*', default=['cache', 'khz', 'donors', 'coverage', 'vor'])
+  p.add_argument('steps', nargs='*', default=['cache', 'khz', 'donors', 'coverage', 'vor', 'vor_native'])
   p.add_argument('--takes_dir', default=os.path.expanduser('~/dl4cv/data/egoexo4d/takes'))
   p.add_argument('--traj_t0', default=os.path.expanduser('~/dl4cv/gaze_check/traj_t0.csv'))
   p.add_argument('--train_sample', type=int, default=30000)
