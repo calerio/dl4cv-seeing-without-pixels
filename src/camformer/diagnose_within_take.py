@@ -17,6 +17,7 @@ args.json, so a gaze run is diagnosed with its own gaze, and a shuffled-gaze run
 
 import argparse
 import json
+import os
 import random
 import sys
 
@@ -110,7 +111,14 @@ def main():
   opts = parser.parse_args()
   random.seed(0)
   torch.manual_seed(0)
-  args, task = build(opts.ckpt, opts.run_args)
+  run_args = opts.run_args
+  if not run_args:
+    # A run's checkpoint sits in <run>/checkpoints/; use the run's own flags if they are there.
+    guess = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(opts.ckpt))), 'args.json')
+    run_args = guess if os.path.exists(guess) else ''
+  args, task = build(opts.ckpt, run_args)
+  print(f'run args: {run_args or "none"} | gaze: {getattr(args, "gaze", "none")}'
+        f' | gaze_input: {getattr(args, "gaze_input", False)}')
   ds = task.train_dataloader().dataset
   n = len(ds)
 

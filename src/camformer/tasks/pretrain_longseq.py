@@ -111,6 +111,14 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
       if len(missing) < len(result.missing_keys):
         print('[init_ckpt] domain token or gaze layer not in checkpoint: starts at zero')
       result.missing_keys[:] = missing
+      dropped = [k for k in result.unexpected_keys if k.startswith(('domain_embed.', 'gaze_proj.'))]
+      if dropped:
+        # A trained domain token or gaze layer would be silently thrown away: the model would be scored without
+        # the part it was trained with. Fail instead of warning.
+        raise RuntimeError(
+            f"init_ckpt '{args.init_ckpt}' has trained weights this model does not use ({dropped[:2]}): pass the"
+            ' flags the run was trained with (--domain_token / --gaze, --gaze_input; see the run\'s args.json)'
+        )
       if result.unexpected_keys:
         print(
             f'[init_ckpt] ignored {len(result.unexpected_keys)} non-encoder'
