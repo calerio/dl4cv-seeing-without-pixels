@@ -42,6 +42,8 @@ def build(ckpt, run_args=''):
       sys.argv += ['--gaze', a['gaze']]
     if a.get('gaze_input'):
       sys.argv += ['--gaze_input']
+    if a.get('domain_token'):
+      sys.argv += ['--domain_token']
   args = train_script.get_args()
   task = CameraPoseTextPretrainingLongSeq(args).cuda().eval()
   return args, task
@@ -114,8 +116,14 @@ def main():
   run_args = opts.run_args
   if not run_args:
     # A run's checkpoint sits in <run>/checkpoints/; use the run's own flags if they are there.
-    guess = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(opts.ckpt))), 'args.json')
+    guess = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(opts.ckpt))), 'args.json')
     run_args = guess if os.path.exists(guess) else ''
+  if not run_args:
+    keys = torch.load(opts.ckpt, map_location='cpu', weights_only=False)
+    keys = keys.get('state_dict', keys)
+    if any('gaze_proj.' in k for k in keys):
+      raise SystemExit(f'{opts.ckpt} has a gaze layer but no args.json was found: pass --run_args <run>/args.json'
+                       ' (real and shuffled gaze runs have identical keys and differ only there)')
   args, task = build(opts.ckpt, run_args)
   print(f'run args: {run_args or "none"} | gaze: {getattr(args, "gaze", "none")}'
         f' | gaze_input: {getattr(args, "gaze_input", False)}')

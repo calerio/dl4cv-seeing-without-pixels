@@ -276,3 +276,20 @@ ocular criterion fixed above stays failed and is reported as such; alignment is 
 Consequence for the results: if gaze is offset from the poses by 2 to 3 frames, a null or weak GT - G0 result is
 partly confounded with misalignment, so a null is reported as "no gain with gaze as aligned here", not as "gaze does
 not help".
+
+## Pilot gate decision (22 Oct 2026): not met, seeds 1 and 2 do not run
+Job 711962 (code d8fc889; `diagnose_within_take.py <run>/checkpoints/last.ckpt --run_args <run>/args.json`, 5,000
+within-take questions from training takes, seed 0, motion-to-text). An earlier attempt (job 711665) scored the gaze
+runs without their gaze layer and is void.
+
+| Run | Within-take MCQ, training takes |
+|---|---|
+| G0 | 60.24 |
+| GT | 60.84 |
+| GT-shuf | 60.00 |
+| GF | 59.62 |
+| GF-shuf | 59.82 |
+
+GT - G0 = +0.60 and GT - GT-shuf = +0.84, both below the 1.0 threshold fixed above, so the gate is not met. As stated
+above, this is a budget decision, not a null result: seed 0 of all five runs is now scored on the test and reported,
+labelled single-seed; no claim is made from it.
