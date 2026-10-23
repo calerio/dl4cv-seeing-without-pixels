@@ -137,3 +137,23 @@ ok shuffled gaze: donor take, donor start + relative time, flag 0 past the donor
 ok collate
 all gaze tests passed
 ```
+
+
+## Pilot gate diagnostics (job 711962, code d8fc889, each run with `--run_args <run>/args.json`)
+Key lines of `out/gz_gate2_711962.out`:
+
+```
+code revision d8fc889
+== gz_G0_s0
+within-take 5-way MCQ on training takes (5000 questions): m2t 60.24  t2m 57.22
+== gz_GT_s0
+within-take 5-way MCQ on training takes (5000 questions): m2t 60.84  t2m 58.12
+== gz_GTshuf_s0
+within-take 5-way MCQ on training takes (5000 questions): m2t 60.00  t2m 57.86
+== gz_GF_s0
+within-take 5-way MCQ on training takes (5000 questions): m2t 59.62  t2m 57.12
+== gz_GFshuf_s0
+within-take 5-way MCQ on training takes (5000 questions): m2t 59.82  t2m 56.82
+```
+No `ignored ... gaze_proj` line appears, so every gaze run was loaded with its gaze layer. The void earlier attempt (job
+711665, without `--run_args`) printed `[init_ckpt] ignored 2 non-encoder key(s) (e.g. ['gaze_proj.weight', ...])`.

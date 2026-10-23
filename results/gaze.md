@@ -5,7 +5,8 @@ met (`docs/gaze.md`, "Pilot gate decision"), so seeds 1 and 2 were not trained. 
 five runs is scored on the test and reported here, **single-seed: no claim is made from these numbers**.
 
 Training: `bash ~/dl4cv/gaze_seed.sh 0`, code d8fc889, jobs 710385-710386. Test: `eval_run.sh gz_<run>_s0` for each
-run (gaze flags read from the run's `args.json`), code ccc49bc, job 713312. Ego-Exo4D 5-way test, motion-to-text (%).
+run (gaze flags read from the run's `args.json`), code ccc49bc, job 713312. Between d8fc889 and ccc49bc only the diagnostics and the new error on a dropped
+gaze layer changed (`git diff --stat d8fc889 ccc49bc -- src/camformer`); test scoring is unchanged. Ego-Exo4D 5-way test, motion-to-text (%).
 
 | Run | Encoder | Gaze | Procedural | Physical | Overall |
 |---|---|---|---|---|---|
@@ -26,8 +27,11 @@ interval over test takes only; says nothing about retraining):
 | GF - GF-shuf | +0.08 (-0.51 to +0.66) | +0.61 (+0.16 to +1.04) | +0.41 (+0.05 to +0.77) |
 
 ## Reading
-- Descriptive only (one seed). The direction matches the training-take gate: real gaze with full fine-tuning is
-  slightly ahead of no gaze and of wrong gaze, by under one point; the frozen variant changes little.
+- Procedural, the split named in advance: all four single-seed intervals include zero. The point estimates are
+  positive (GT - G0 +0.72, GT - GT-shuf +0.84, GF - G0 +0.19, GF - GF-shuf +0.08).
+- Some overall and physical intervals exclude zero (e.g. GF - GF-shuf overall +0.41, +0.05 to +0.77), but they are
+  not the primary split and are picked from 12 intervals with no correction. All intervals cover test takes only,
+  not retraining.
 - The reporting rule in `docs/gaze.md` needs three seeds per run, so none of its claims ("gaze helps", "frozen is
   enough", "no cost on physical") can be evaluated.
 - Alignment of gaze and pose was not verified (`data_files/egoexo4d/gaze_alignment_decision.txt`); small or absent
