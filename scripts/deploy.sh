@@ -4,7 +4,9 @@
 set -euo pipefail
 rev=$(git rev-parse --short HEAD)
 git diff --quiet HEAD -- src/camformer scripts || rev="$rev+uncommitted"
-rsync -a --exclude=__pycache__ src/camformer/ bocconi-hpc:~/dl4cv/camformer/
+# -K keeps directory links on the cluster (data_files/ links to the upstream clone's CSVs; our own files sit
+# next to those links) instead of replacing them with plain directories.
+rsync -aK --exclude=__pycache__ src/camformer/ bocconi-hpc:~/dl4cv/camformer/
 rsync -a scripts/slurm/*.sh scripts/submit_chain.sh bocconi-hpc:~/dl4cv/
 ssh bocconi-hpc "echo $rev > ~/dl4cv/camformer/REVISION"
 echo "deployed $rev"

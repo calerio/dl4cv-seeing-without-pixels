@@ -9,10 +9,15 @@ For one CamFormer checkpoint on the Ego-Exo4D training split, measures:
      answer), scored like the test.
 
 Usage (one GPU, from the code directory):
-    python diagnose_within_take.py <checkpoint> [--batches 20] [--questions 5000]
+    python diagnose_within_take.py <checkpoint> [--batches 20] [--questions 5000] [--run_args <run>/args.json]
+
+With --run_args, the model and gaze flags the run was trained with (--gaze, --gaze_input) are read from its
+args.json, so a gaze run is diagnosed with its own gaze, and a shuffled-gaze run with the committed donor map.
 """
 
 import argparse
+import json
+import os
 import random
 import sys
 
@@ -26,11 +31,19 @@ from tasks.pretrain_longseq import CameraPoseTextPretrainingLongSeq
 import train as train_script
 
 
-def build(ckpt):
+def build(ckpt, run_args=''):
   sys.argv = [
       'train.py', '--dataset', 'egoexo4d_pretrain_longseq', '--pose_encoding', 'rel9d_grav',
       '--take_duration', '8', '--sample_dur', '--num_gpus', '1', '--init_ckpt', ckpt,
   ]
+  if run_args:
+    a = json.load(open(run_args))
+    if a.get('gaze', 'none') != 'none':
+      sys.argv += ['--gaze', a['gaze']]
+    if a.get('gaze_input'):
+      sys.argv += ['--gaze_input']
+    if a.get('domain_token'):
+      sys.argv += ['--domain_token']
   args = train_script.get_args()
   task = CameraPoseTextPretrainingLongSeq(args).cuda().eval()
   return args, task
@@ -40,7 +53,7 @@ def build(ckpt):
 def encode(task, batch):
   poses, pad_mask, text_list, lengths, labels, full = batch
   dev = 'cuda'
-  _, feats = task.encode_motion(poses.to(dev), pad_mask.to(dev), text_list, lengths.to(dev), labels.to(dev))
+  _, feats = task.encode_motion(poses.to(dev), pad_mask.to(dev), text_list, lengths.to(dev), labels.to(dev), full)
   texts = task.encode_text(text_list, full)
   return feats.float(), texts.float(), text_list
 
@@ -96,10 +109,24 @@ def main():
   parser.add_argument('--batches', type=int, default=20)
   parser.add_argument('--questions', type=int, default=5000)
   parser.add_argument('--k', type=int, default=8)
+  parser.add_argument('--run_args', default='')
   opts = parser.parse_args()
   random.seed(0)
   torch.manual_seed(0)
-  args, task = build(opts.ckpt)
+  run_args = opts.run_args
+  if not run_args:
+    # A run's checkpoint sits in <run>/checkpoints/; use the run's own flags if they are there.
+    guess = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(opts.ckpt))), 'args.json')
+    run_args = guess if os.path.exists(guess) else ''
+  if not run_args:
+    keys = torch.load(opts.ckpt, map_location='cpu', weights_only=False)
+    keys = keys.get('state_dict', keys)
+    if any('gaze_proj.' in k for k in keys):
+      raise SystemExit(f'{opts.ckpt} has a gaze layer but no args.json was found: pass --run_args <run>/args.json'
+                       ' (real and shuffled gaze runs have identical keys and differ only there)')
+  args, task = build(opts.ckpt, run_args)
+  print(f'run args: {run_args or "none"} | gaze: {getattr(args, "gaze", "none")}'
+        f' | gaze_input: {getattr(args, "gaze_input", False)}')
   ds = task.train_dataloader().dataset
   n = len(ds)
 

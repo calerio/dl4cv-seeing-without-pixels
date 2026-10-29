@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import torch
 from utils.dataset_utils import matrix_to_pose7d, transform_camera_pose
+from datasets import gaze as gaze_lib
 
 # Packaged CSV files (train_v2.csv etc.) shipped alongside this module.
 _PKG_DATA_FILES_DIR = os.path.join(
@@ -97,6 +98,9 @@ class EgoExo4DCameraPoseLongSeqForPretraining(torch.utils.data.Dataset):
     self.test_dur_points = int(self.test_take_duration / 2 * self.sample_fps)
     self.start_ratio = 0.2 if args is None else args.start_ratio
     self.test_time_ratio = 0.5 if args is None else args.test_time_ratio
+    # Experiment 3: gaze features per pose frame ('none' keeps the authors' samples unchanged).
+    self.gaze = 'none' if args is None else getattr(args, 'gaze', 'none')
+    self.frame_dt = self.pre_sample_rate / 1e3  # seconds between stored pose frames
 
     mode_key = 'train' if mode == 'train' else 'val'
     self.cache_dir = os.path.join(
@@ -185,10 +189,11 @@ class EgoExo4DCameraPoseLongSeqForPretraining(torch.utils.data.Dataset):
   def __len__(self):
     return len(self.df)
 
-  def __getitem__(self, index):
-    row = self.df.iloc[index]
-    cam_traj = self._load_cam_traj(row)
+  def window(self, row):
+    """Stored-frame indices of the model's input window for a row, and the window start.
 
+    Same draws as the authors' code (random.randint, then random.uniform, in train and val mode).
+    """
     if (
         self.mode == 'test' and self.test_take_duration == 0
     ) or self.dur_points == 0:
@@ -212,9 +217,15 @@ class EgoExo4DCameraPoseLongSeqForPretraining(torch.utils.data.Dataset):
       random_start = max(0, int(row['timestamp_idx'] - dur_points * ratio))
       random_start = min(random_start, row['t0_idx'])
       random_end = min(random_start + dur_points * 2, row['cam_traj_len'])
+    return np.arange(random_start, random_end, self.sample_rate), random_start
 
-    cam_traj_slice = cam_traj[random_start:random_end]
-    cam_traj_slice = cam_traj_slice[:: self.sample_rate]
+  def __getitem__(self, index):
+    row = self.df.iloc[index]
+    cam_traj = self._load_cam_traj(row)
+    frame_idx, random_start = self.window(row)
+    frame_idx = frame_idx[frame_idx < len(cam_traj)]
+
+    cam_traj_slice = cam_traj[frame_idx]
     if len(cam_traj_slice) == 0:
       print(
           f'Invalid indices {index}, cam_traj_slice.shape:'
@@ -237,9 +248,14 @@ class EgoExo4DCameraPoseLongSeqForPretraining(torch.utils.data.Dataset):
       return self.__getitem__(random.randint(0, len(self) - 1))
 
     scenario_label = self.take_mapping[row['take_name']]
+    # The fourth item is unused by the authors' tasks (an empty list); with gaze on it carries the gaze features,
+    # one row per pose frame of cam_traj_slice.
+    extra = []
+    if self.gaze != 'none':
+      extra = {'gaze': gaze_lib.clip_gaze(self.gaze, row, frame_idx, self.frame_dt)}
     return (
         cam_traj_slice,
         [int(t0), int(t1), row['description_text'], row['take_name']],
         scenario_label,
-        [],
+        extra,
     )

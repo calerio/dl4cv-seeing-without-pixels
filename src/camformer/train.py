@@ -65,6 +65,26 @@ def get_args():
   )
   # Experiment 2 (one model for ego and exo). All off by default.
   parser.add_argument(
+      '--gaze',
+      choices=['none', 'real', 'shuffled', 'zero'],
+      default='none',
+      help=(
+          'Experiment 3: per-frame eye-gaze features for Ego-Exo4D clips. real = this clip; shuffled = the'
+          ' committed donor clip of the same take (data_files/egoexo4d/gaze_donors_v1.csv.gz); zero = all'
+          ' zeros, to check that a trained model uses gaze. Needs --gaze_input.'
+      ),
+  )
+  parser.add_argument(
+      '--gaze_input',
+      action='store_true',
+      help='Experiment 3: add the zero-initialised gaze layer to the encoder (models/cm_encoder.py).',
+  )
+  parser.add_argument(
+      '--freeze_encoder',
+      action='store_true',
+      help='Experiment 3: train only the gaze layer; the released encoder stays fixed (training mode kept).',
+  )
+  parser.add_argument(
       '--domain_token',
       action='store_true',
       help='Add a learned, zero-initialised per-domain vector to every input token.',
@@ -208,6 +228,12 @@ def get_args():
   args.encode_pose = {'abs7d': 0, 'rel9d': 2, 'rel9d_grav': 11}[
       args.pose_encoding
   ]
+  if args.gaze != 'none' and not args.gaze_input:
+    parser.error('--gaze needs --gaze_input')
+  if args.gaze != 'none' and args.dataset != 'egoexo4d_pretrain_longseq':
+    parser.error('--gaze is only implemented for egoexo4d_pretrain_longseq')
+  if args.freeze_encoder and not args.gaze_input:
+    parser.error('--freeze_encoder needs --gaze_input')
   return args
 
 

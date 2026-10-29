@@ -51,6 +51,7 @@ class CameraPoseSeqEncoder(nn.Module):
       use_scenario_label: bool = False,
       use_learnable_gravity: bool = False,
       domain_token: bool = False,
+      gaze_input: bool = False,
   ):
     super().__init__()
     self.encode_pose = encode_pose
@@ -100,11 +101,25 @@ class CameraPoseSeqEncoder(nn.Module):
       self.domain_embed = nn.Embedding(2, d_model)
       nn.init.zeros_(self.domain_embed.weight)
 
+    # Experiment 3: per-frame gaze features (yaw, pitch, log depth, valid flag) projected and added to each pose
+    # token. Weight and bias start at zero, so a model loaded from a checkpoint without it is unchanged.
+    self.gaze_input = gaze_input
+    if self.gaze_input:
+      self.gaze_proj = nn.Linear(4, d_model)
+      nn.init.zeros_(self.gaze_proj.weight)
+      nn.init.zeros_(self.gaze_proj.bias)
+
     self.norm = nn.LayerNorm(d_model)
     if self.output_dim != d_model:
       self.out_proj = nn.Linear(d_model, self.output_dim)
     else:
       self.out_proj = nn.Identity()
+
+  def add_gaze(self, pose_tokens, gaze):
+    """Adds projected gaze frame i to pose token i (before any prepended token). No-op without gaze."""
+    if not self.gaze_input or gaze is None:
+      return pose_tokens
+    return pose_tokens + self.gaze_proj(gaze)
 
   def forward(
       self,
@@ -115,10 +130,11 @@ class CameraPoseSeqEncoder(nn.Module):
       return_middle_h=False,
       has_gravity=None,
       domain_ids=None,
+      gaze=None,
   ):
     if self.encode_pose == 11:
       x, gravity_vecs = x_padded[:, :, :9], x_padded[:, 0:1, 9:]
-      h1 = self.in_proj(x)
+      h1 = self.add_gaze(self.in_proj(x), gaze)
       h2 = self.in_proj_gravity(gravity_vecs)
       if self.training and not self.use_learnable_gravity:
         drop_mask = (
@@ -143,7 +159,7 @@ class CameraPoseSeqEncoder(nn.Module):
       )
       pad_mask = torch.cat([first_col, pad_mask], dim=1)
     else:
-      h = self.in_proj(x_padded)
+      h = self.add_gaze(self.in_proj(x_padded), gaze)
 
     if self.use_scenario_label:
       label_token = self.label_embed(scenario_labels).unsqueeze(1)
