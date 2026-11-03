@@ -29,3 +29,10 @@ Scripts: [`scripts/gaze_check/`](../scripts/gaze_check/).
 ## Conclusion
 Gaze covers almost every released clip and needs no further download. The 359 training clips without gaze
 are dropped (or given a zero gaze input) in the gaze experiment.
+
+## Gaze file columns (20 Oct 2026)
+`head -1 ~/dl4cv/data/egoexo4d/takes/cmu_bike01_2/eye_gaze/general_eye_gaze.csv` on the cluster:
+
+```
+tracking_timestamp_us,left_yaw_rads_cpf,right_yaw_rads_cpf,pitch_rads_cpf,depth_m,left_yaw_low_rads_cpf,right_yaw_low_rads_cpf,pitch_low_rads_cpf,left_yaw_high_rads_cpf,right_yaw_high_rads_cpf,pitch_high_rads_cpf,tx_left_eye_cpf,ty_left_eye_cpf,tz_left_eye_cpf,tx_right_eye_cpf,ty_right_eye_cpf,tz_right_eye_cpf,session_uid
+```

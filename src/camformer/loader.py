@@ -139,6 +139,11 @@ def longseq_pose_text_collate(batch):
   pad_mask = (
       torch.arange(max_T)[None, :].expand(len(seqs), max_T) >= lengths[:, None]
   )
+  if description_list and isinstance(description_list[0], dict):
+    # Experiment 3: per-frame gaze features, padded like the poses, in place of the unused fourth item.
+    gaze = [torch.as_tensor(d['gaze'], dtype=torch.float32) for d in description_list]
+    assert all(g.size(0) == s.size(0) for g, s in zip(gaze, seqs)), 'gaze and pose lengths differ'
+    description_list = {'gaze': pad_sequence(gaze, batch_first=True)}
   return (
       poses_padded,
       pad_mask,

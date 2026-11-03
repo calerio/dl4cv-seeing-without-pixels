@@ -15,7 +15,9 @@ Common flags: `--dataset egoexo4d_pretrain_longseq --pose_encoding rel9d_grav --
 | B' | `--same_take_k 8 --same_take_gap 4 --neg_mask verb --within_take_weight 1` | `p1_Bp_s0`, `p1_Bp_s1`, `p1_Bp_s2` |
 
 Seed 0 of A and B' (the pilot): jobs 704740-704743, code a8fc1ec. All other runs: jobs 705874-705877, code bb5dc84
-(the only difference under `src/camformer/` is the new file `compare_runs.py`, see D3). Each run is tested by
+(the only difference under `src/camformer/` is the new file `compare_runs.py`, see D3). Job wall times (`sacct -X -o JobID,Elapsed`): 705874 5:39:48 and 705875 6:40:49 and 705876 5:45:52 (two runs each),
+705877 3:20:29 (one run). Test split sizes (`score_mcq.py`, `n` column): 2,621 procedural, 4,458 physical, 7,079 in all.
+Each run is tested by
 `scripts/slurm/eval_run.sh`, which writes `test_questions.csv` (one row per question) in the run's log directory.
 
 ## Per seed
