@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=32G
-#SBATCH --time=01:00:00
+#SBATCH --time=02:00:00
 #SBATCH --output=out/%x_%j.out
 #SBATCH --error=err/%x_%j.err
 
@@ -15,7 +15,7 @@
 # Usage, from ~/dl4cv/camformer:
 #   sbatch ~/dl4cv/eval_nymeria.sh run <job_name>      # last checkpoint of one of our experiment-1 runs
 #   sbatch ~/dl4cv/eval_nymeria.sh released <name>     # checkpoints/<name>.pt, e.g. egoexo4d_dur8
-# Runs trained with gaze or the domain token are refused: this path feeds neither.
+# Only runs with the authors' architecture (experiment 1) are accepted: this path feeds no gaze or domain token.
 
 module load sw/miniconda3
 eval "$(conda shell.bash hook)"
@@ -35,8 +35,13 @@ case $kind in
     python - "$out/args.json" <<'PY'
 import json, sys
 a = json.load(open(sys.argv[1]))
-if a.get('gaze', 'none') != 'none' or a.get('domain_token'):
-  sys.exit(f'{sys.argv[1]}: run uses gaze or the domain token; the Nymeria path feeds neither')
+# Only experiment-1 runs: the authors' model with default architecture flags.
+odd = {k: a.get(k) for k in ('gaze_input', 'domain_token', 'freeze_encoder', 'use_learnable_gravity',
+                             'use_scenario_label', 'hier_text') if a.get(k)}
+if a.get('gaze', 'none') != 'none':
+  odd['gaze'] = a['gaze']
+if odd:
+  sys.exit(f'{sys.argv[1]}: run trained with {odd}; the Nymeria path does not feed these')
 PY
     mkdir -p ~/dl4cv/run_ckpts
     ckpt=~/dl4cv/run_ckpts/$name.ckpt
@@ -52,7 +57,7 @@ echo "code revision $(cat REVISION 2>/dev/null || echo unknown); model: $load"
 log=$(mktemp); trap 'rm -f "$log"' EXIT
 for col in a b c d; do
   python train.py --dataset nymeria_pretrain --test --text_column $col --pose_encoding rel9d_grav \
-      --num_gpus 1 --batch_size 1000 $load | tee "$log"
+      --num_gpus 1 --batch_size 1000 --job_name nym_${name}_$col $load | tee "$log"
   d=$(sed -n 's/^Saved features.* to \(final_data\/.*\)$/\1/p' "$log" | tail -1)
   [ -n "$d" ] || { echo "FAIL: no features written for column $col"; exit 1; }
   python score_nymeria.py $col "$d" --out "$out/nymeria_$col.csv"
@@ -62,6 +67,8 @@ import sys
 import pandas as pd
 out = sys.argv[1]
 q = pd.concat([pd.read_csv(f'{out}/nymeria_{c}.csv') for c in 'abcd'], ignore_index=True)
+if len(q) != 4000 or q.question.nunique() != 4000 or sorted(q.type.unique()) != list('abcd'):
+  sys.exit(f'FAIL: expected 4,000 questions over types a-d, got {len(q)}')
 q.to_csv(f'{out}/nymeria_questions.csv', index=False)
 print(f'Nymeria all four: {len(q)} questions | m2t {100 * q.m2t.mean():.2f} | t2m {100 * q.t2m.mean():.2f}')
 PY

@@ -44,7 +44,11 @@ are scored once so that the size of this gap is on record.
 
 **Path.** The authors' own test (`train.py --dataset nymeria_pretrain --test --text_column a..d`), run by
 `scripts/slurm/eval_nymeria.sh`; `score_nymeria.py` writes one row per question, with the recording as the
-resampling unit (130 recordings; every question's five options come from one recording). Runs with gaze or the
+resampling unit (every question's five options come from one recording). Recordings per narration type: 130 body
+posture, 192 hands/arms, 167 legs/feet, only 7 focus of attention; 198 pooled. No test row has an empty trajectory,
+so the dataset's fallback to the next row never fires (checked 3 Nov on the cluster). Our runs are loaded as
+Lightning checkpoints (`--ckpt`), the released models with `--init_ckpt`; the feasibility job 736059 showed both
+paths load and that the released 16 s model gives the paper's 36.30 on body posture. Runs with gaze or the
 domain token are refused, because this path feeds neither, so experiment 2 and 3 models are not scored here.
 
 **Models.** A, C, B' (seeds 0-2), G (seeds 0-2, once trained), released 8 s and 16 s.
@@ -61,4 +65,5 @@ and `compare_runs.py` intervals for B' - A and G - A (pooled and per type).
 
 **Rule, fixed now.** These are secondary, descriptive results. We say B' transfers better (or worse) than A only
 if the pooled B' - A interval excludes zero; per-type differences are reported without a claim, since four types
-on 1,000 questions each are four chances for a chance finding.
+on 1,000 questions each are four chances for a chance finding. Focus of attention gets no interval: 7 recordings
+are too few clusters for a bootstrap.

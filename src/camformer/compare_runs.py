@@ -91,7 +91,7 @@ def main():
   splits = [('all', 'all', np.ones(len(qa), bool))]
   for t in sorted(set(qa['type']) - {'all'}):
     splits.append((t, 'all', (qa['type'] == t).to_numpy()))
-    for v in sorted(qa['view'].unique()):
+    for v in sorted(set(qa['view']) - {'all'}):  # Nymeria and DynPose files have view 'all' only
       splits.append((t, v, ((qa['type'] == t) & (qa['view'] == v)).to_numpy()))
 
   print(f'metric {opts.metric} | A: {len(opts.a)} seed(s) | B: {len(opts.b)} seed(s) | '
