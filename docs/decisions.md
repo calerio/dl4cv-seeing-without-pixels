@@ -3,6 +3,30 @@
 Choices that change how we run or compare experiments, with the reason for each. Newest first.
 Each one is meant to be cited in the report.
 
+## D6. Experiment 2 is run again, with each exo clip's own frame rate (4 Nov 2026)
+
+**Situation.** D4 resamples exo clips "from 30 to 20 FPS", taking supp. 2.2's 30 FPS for every ViPE clip. ViPE
+gives one pose per video frame at the video's own rate, and about a third of the DynPose-100K videos are 24 or 25
+FPS (`src/camformer/dynpose_fps.py`: the rate follows from the number of ViPE poses and the length of the
+dataset's own 12 FPS frame sequence; the estimates fall into tight groups). Table
+`src/camformer/data_files/dynpose100k_fps/vipe_fps_v1.csv.gz` (job 737943, code as in this decision's PR; sha256 of
+the uncompressed CSV `1f9cb977e60166c8f05876392f54497a5fb6f55a67578d5a965d99a3e18c13e0`): 99,501 clips, 64,866 at 30
+FPS, 18,123 at 25, 16,443 at 24 and 46 at 15, and 23 that fit no standard rate and keep their own estimate. 4,778
+(4.8%) are marked `ambiguous`: estimates between the groups (between 25 and 30, 1,456 assigned 25 and 60 assigned 30
+by each clip's rounding margin; above 30.5, 30) and the 23 outside every group. An earlier build (job 737912) sent
+every estimate from 27.5 to 29.5 to 30 FPS; review found that this contradicts the rounding bound, and the rule was
+changed before any run used the table. In E->X, U0 and U1
+those clips therefore entered at 16 to 17 poses per second instead of 20. Training and test handled them the same
+way, so nothing was mis-scored, but D4's statement was false for those clips and the joint models saw two
+different pose rates for exo data.
+
+**Decision.** Run all five setups again, seeds 0-2 (runs `ee2_*`, `bash ~/dl4cv/ego_exo_seed.sh <seed> v2`), with
+each clip's rate (`--exo_fps_table dynpose100k_fps/vipe_fps_v1.csv.gz`), on one code revision after the
+regression check. S-ego and S-exo do not resample and are rerun only so that every comparison is within one code
+revision. The reporting rule in `docs/ego_exo.md`, fixed before the first runs, applies unchanged. The rerun follows
+from the bug, not from the results; the first version's results were known when it was decided. They stay in
+`results/ego_exo.md` as version 1, and version 2 replaces them as the experiment's result whatever it shows.
+
 ## D5. Follow-ups: a grouping-only setup, and Nymeria scored against the 8-second model (3 Nov 2026)
 
 **Situation.** Experiment 1's gain mixes two changes (grouping by take, within-take loss), and the README promises
@@ -24,7 +48,8 @@ scored on Nymeria (that path feeds neither the domain token nor gaze). Design, t
 encoder. The authors trained them with different tasks, rates and axes.
 
 **Decision.** In the joint runs and in E->X, exo clips go through the long-sequence (ego) path with the whole clip
-as one window, are resampled from 30 to 20 FPS (`--exo_resample_hz 20`), and are turned into the ego camera axes
+as one window, are resampled to 20 FPS (`--exo_resample_hz 20`; the first runs took every clip as 30 FPS, which is
+wrong for about a third of them, see D6), and are turned into the ego camera axes
 by a 90 degree turn about the forward axis (`--exo_to_aria_axes`). S-exo keeps the authors' exo task unchanged.
 
 **Evidence.** The released exo model scores 46.30 through the authors' path and 46.20 through ours at the native
@@ -33,8 +58,10 @@ the test (50.42 against 49.38, job 706966); it is kept as a choice, not as a gai
 stored ego frames (camera x has a world-up component of -0.81, `exo_checks.py`, jobs 706934, 706937) and ViPE's
 OpenCV convention.
 
-**Consequence for comparisons.** U1 against S-exo differs in path, rate and axes as well as in sharing; U1 against
-E->X shares all three and is the clean test of sharing.
+**Consequence for comparisons.** U1 against S-exo differs in path, rate and axes as well as in sharing. E->X shares
+path, rate and axes with the joint models, but not the domain token: U0 against E->X is the comparison closest to
+"sharing only" (descriptive, as it was not one of the comparisons fixed in advance); U1 against E->X also includes
+the token. (Corrected 4 Nov: this paragraph called U1 against E->X "the clean test of sharing".)
 
 ## D3. Hard negatives: fine-tune, add a within-take loss term, and gate the full runs on one pilot (16 Oct 2026)
 

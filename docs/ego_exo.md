@@ -21,7 +21,7 @@ interfere. The runs below separate the two effects.
 | | Ego-Exo4D (ego) | DynPose-100K (exo) |
 |---|---|---|
 | Training pairs | 159,186 (narrations) | 88,151 after the scale filter (Panda70M captions) |
-| Pose source | Aria glasses, downsampled to 20 FPS (supp. 2.2) | video estimates: dataset's own at 12 FPS, ViPE at 30 FPS (supp. 2.2) |
+| Pose source | Aria glasses, downsampled to 20 FPS (supp. 2.2) | video estimates: dataset's own at 12 FPS, ViPE at 30 FPS per supp. 2.2, in fact at each video's rate: mostly 30, 25 or 24, a few 15, and some clips that fit no standard rate (D6) |
 | Pose encoding | relative to the middle frame, 6D rotation, plus a gravity token (`rel9d_grav`) | same without gravity (`rel9d`); gravity "is omitted when processing poses estimated from monocular videos" (supp. 2.3) |
 | Clip | a context window of up to 8 s around the narration; only the labelled sub-window is pooled (`tasks/pretrain_longseq.py`) | the whole short clip, mean-pooled (`tasks/pretrain.py`) |
 | Translation | metric (SLAM) | scale from the estimator; clips with `pose_scale` ≥ 20 are dropped |
@@ -77,6 +77,9 @@ Every change sits behind a flag whose default reproduces the authors' code.
    rule could not have failed and says little. On the same clips, a 5-way choice with random distractors
    (chance 20%) gives 50.42 native and 49.38 at 20 FPS: one point lost. Resampling stays the default; the
    rule's metric is reported as chosen badly.
+   **Corrected 4 Nov (D6).** ViPE poses come at each video's own rate: about a third of the clips are 24 or 25
+   FPS, not 30. The first runs and the measurements above took 30 FPS for every clip, so those clips were resampled
+   to 16-17 poses per second instead of 20. Version 2 of the runs uses each clip's rate (`--exo_fps_table`).
 6. **Common axes** (`--exo_to_aria_axes`). Exo camera frames are turned into the ego camera frame before the
    relative poses are computed. ViPE stores OpenCV camera-to-world matrices (its writer, `vipe/utils/io.py`:
    "Save OpenCV cam2world matrices as 4x4 matrix in npz file"), which fixes the y-down sign that the exo data
@@ -92,7 +95,9 @@ Every change sits behind a flag whose default reproduces the authors' code.
      so they come in some other world frame, left as found.
 7. **Translation scale.** No normalisation in the main runs. Rule: if the median speeds differ by more than a
    factor of 3, add one scale constant. **Checked 18 Oct** (job 706937): per-clip median speed, ego 0.31 m/s
-   (p90 1.12), exo 0.19 (p90 0.95); ratio 1.6. No scale constant.
+   (p90 1.12), exo 0.19 (p90 0.95); ratio 1.6. No scale constant. (Exo speeds were computed at 30 FPS for every
+   clip; with each clip's rate (D6) they would be up to 20% lower for the 24 and 25 FPS clips, computed from the
+   rates (24/30, 25/30), not re-measured, which still leaves the ratio far below 3.)
 8. **Batches stay within one domain.** Each step draws a full batch of 1,024 from one domain. A mixed batch would
    pit ego clips against exo captions, which are trivially easy to rule out, while both tests are within one
    domain. Each epoch runs every ego batch (155) and every exo batch (86) once, in a random order fixed by the
@@ -118,8 +123,9 @@ number of updates in every run that trains on it: 3,100 ego steps and 1,720 exo 
 
 S-exo uses the authors' exo setup (`rel9d`, native rate unless item 5 changes it, their pooling). U0, U1, E→X
 and Z use items 2 to 7. So on the exo test, U1 against S-exo mixes four differences (starting weights, input
-preparation, pooling and architecture, sharing), while U1 against E→X isolates sharing: same start, same
-inputs, same architecture, same exo steps. The report reads E→X first.
+preparation, pooling and architecture, sharing), while E→X has the same start, inputs and exo steps as the joint
+models. U0 against E→X is the comparison closest to "sharing only"; U1 against E→X also includes the domain token,
+which E→X does not have. (Corrected 4 Nov: this paragraph said U1 against E→X isolates sharing.)
 
 U0 is not blind to the domain. Exo clips always carry the "gravity unknown" token, and translation scale and
 clip length differ between domains, so the encoder can tell them apart without the domain token. Our prior is
@@ -200,7 +206,8 @@ Checks before the first run, all done on 18 Oct:
   from sharing; the report says so rather than claiming sharing hurts.
 - **Different clip lengths.** Exo clips are whole short videos; ego windows are up to 8 s. **Checked 18 Oct**
   (job 706937): exo clips are 3.8 to 7.6 s (p10 to p90; median 5.0 s, at most 256 frames = 8.5 s), every
-  video frame (index step 1). No cropping.
+  video frame (index step 1). No cropping. (Seconds computed at 30 FPS; clips from 24 or 25 FPS videos are up to
+  25% longer, at most about 10.7 s, still one window.)
 - **1,000 exo questions are few.** Small exo differences will not be significant; we say so instead of reading
   them.
 - **If time runs short**, cut in this order: seeds 1 and 2 of E→X, then the resampling ablation, then Z,
