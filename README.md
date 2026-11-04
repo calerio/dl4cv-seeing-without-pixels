@@ -2,7 +2,8 @@
 
 Group project for 20600 Deep Learning for Computer Vision (Bocconi, a.y. 2026-27).
 
-*Nullius in verba* (take nobody's word for it): every number here is reproduced from code in this repository, and every comparison was set before its runs.
+*Nullius in verba* (take nobody's word for it): every number here is reproduced from code in this repository, and each comparison's rule is written down with
+the date it was fixed, including where a decision had already seen a test result.
 
 **Team:** Juan Ignacio Arguello, Valerio Costa, Facundo Lucero
 

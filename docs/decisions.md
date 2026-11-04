@@ -40,7 +40,8 @@ E->X shares all three and is the clean test of sharing.
 
 **Situation.** Two first fine-tuning runs (20 epochs from the released checkpoint, without a fixed seed) gave
 the same test accuracy as the released model whether batches were random or grouped by take (44.79 and 44.84
-against 44.81 motion-to-text). Before changing anything we measured why, on the released checkpoint and both
+against 44.81 motion-to-text). These two runs were scored on the test, so the redesign below followed a test
+result. Before changing anything we measured why, on the released checkpoint and both
 runs, without training (`diagnose_within_take.py`):
 
 | Batches | Same-take negatives per clip (different verb) | Share of the softmax over negatives that they carry |
@@ -90,7 +91,12 @@ For the record, the seed-0 comparison on the test (`python compare_runs.py --a p
 files being each run's `test_questions.csv` from `eval_run.sh`; 10,000 take resamples, seed 0): B' minus A is
 +3.82 points on procedural questions (95% interval +2.50 to +5.18) and +2.43 overall (+1.25 to +3.48).
 
-**Rule for the final claim, fixed 18 Oct before any result of seeds 1 and 2 is seen.** On motion-to-text
+**Rule for the final claim, written 18 Oct at 11:39 (commit 7d415c8; all times Central European Summer Time, as
+on the cluster).** The go decision for seeds 1 and 2 was committed at 00:46 (44f1978) and the seeds were submitted
+at 00:47 (jobs 705874-705877). By 11:39 seeds 1 and 2 of A and B' had finished (test tables written between 03:34
+and 07:27), and so had C's seeds 0 and 2 (09:17, 10:47); C's seed 1 finished at 12:12. None of these results had
+been read when the rule was written; its thresholds were set knowing seed 0's test result. (Corrected 4 Nov: this
+heading said "fixed 18 Oct before any result of seeds 1 and 2 is seen".) On motion-to-text
 accuracy, comparing B' with A over seeds 0-2 with `compare_runs.py` (two-level bootstrap over seeds and takes):
 - "Same-take negatives improve procedural accuracy" is claimed only if the 95% interval of B' minus A on
   procedural questions is above zero, and B' beats A on procedural questions in seed 1 and in seed 2 separately
