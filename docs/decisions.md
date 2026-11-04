@@ -23,8 +23,9 @@ from the bug, not from the results; the first version's results were known when 
 ## D5. Follow-ups: a grouping-only setup, and Nymeria scored against the 8-second model (3 Nov 2026)
 
 **Situation.** Experiment 1's gain mixes two changes (grouping by take, within-take loss), and the README promises
-Nymeria zero-shot results, which the paper reports for its 16-second checkpoint while all our runs start from the
-8-second one.
+Nymeria zero-shot results. The paper's Nymeria figures match the authors' 16-second checkpoint (their README pairs
+it with Nymeria; the paper itself describes only an 8-second context), while all our runs start from the 8-second
+one.
 
 **Decision.** Train G (grouping and verb mask, no loss term; seeds 0-2) on current code, and check separately that
 the current code trains like the revision B' and C were trained on (`check_training_equivalence.sh`; the regression
