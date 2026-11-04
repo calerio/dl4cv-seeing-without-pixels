@@ -7,7 +7,8 @@ What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
   [`results/gaze.md`](results/gaze.md)).
 - Designed two follow-ups to experiment 1 ([`docs/followups.md`](docs/followups.md), decision D5): setup G
   (same-take batches and the verb mask, without the within-take loss), and zero-shot scoring on Nymeria. Trained G,
-  seeds 0-2, and scored the experiment 1 models and both released Ego-Exo4D checkpoints on Nymeria.
+  seeds 0-2, and scored the experiment 1 models and both released Ego-Exo4D checkpoints on Nymeria. No numbers
+  yet: they go into a results file first.
 
 **Next:** test G, check that the current code trains like the revision A, C and B' were trained on, and write the
 results file.
