@@ -58,11 +58,12 @@ epoch, and the learning rate is constant). The revision of each run is recorded 
 ## 2. Nymeria zero-shot
 
 **Question.** Do the experiment-1 changes help or hurt transfer to Nymeria, the paper's zero-shot egocentric test
-(paper, Sec. 4 "How generalizable is the learned CamFormer?", Table 2 right: 4,000 questions, 1,000 per narration
+(paper, Sec. 5.1, p. 6, "How generalizable is the learned CamFormer?", Table 2 right: 4,000 questions, 1,000 per narration
 type)?
 
-**Difference from the paper.** The paper's Nymeria figures come from the 16-second checkpoint
-(`egoexo4d_dur16.pt`, upstream README); all our runs fine-tune the 8-second one. Our figures are therefore compared
+**Difference from the paper.** The paper's Nymeria figures match the authors' 16-second checkpoint
+(`egoexo4d_dur16.pt`; the authors' README pairs it with Nymeria, while the paper itself describes only an 8-second
+context, p. 4); all our runs fine-tune the 8-second one. Our figures are therefore compared
 with the released 8-second model scored the same way, never with the paper's numbers. Both released checkpoints
 are scored once so that the size of this gap is on record.
 
@@ -83,7 +84,7 @@ domain token are refused, because this path feeds neither, so experiment 2 and 3
 
 | Model | Body posture | Hands/arms | Legs/feet | Focus | All |
 |---|---|---|---|---|---|
-| Released 16 s (paper's model) | | | | | |
+| Released 16 s (the model behind the paper's Nymeria figures) | | | | | |
 | Released 8 s | | | | | |
 | A, C, B', G (mean of 3 seeds, per-seed range) | | | | | |
 
