@@ -96,8 +96,8 @@ Every change sits behind a flag whose default reproduces the authors' code.
 7. **Translation scale.** No normalisation in the main runs. Rule: if the median speeds differ by more than a
    factor of 3, add one scale constant. **Checked 18 Oct** (job 706937): per-clip median speed, ego 0.31 m/s
    (p90 1.12), exo 0.19 (p90 0.95); ratio 1.6. No scale constant. (Exo speeds were computed at 30 FPS for every
-   clip; with each clip's rate (D6) they are up to 20% lower for a third of the clips, and the ratio stays far below
-   3.)
+   clip; with each clip's rate (D6) they would be up to 20% lower for the 24 and 25 FPS clips, computed from the
+   rates (24/30, 25/30), not re-measured, which still leaves the ratio far below 3.)
 8. **Batches stay within one domain.** Each step draws a full batch of 1,024 from one domain. A mixed batch would
    pit ego clips against exo captions, which are trivially easy to rule out, while both tests are within one
    domain. Each epoch runs every ego batch (155) and every exo batch (86) once, in a random order fixed by the
