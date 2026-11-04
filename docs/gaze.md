@@ -25,7 +25,9 @@ entirely between our own runs, all starting from the released checkpoint.
 - Source: `takes/<take>/eye_gaze/general_eye_gaze.csv` (Aria MPS), already on the cluster for every take. Columns used:
   `tracking_timestamp_us`, `left_yaw_rads_cpf`, `right_yaw_rads_cpf`, `pitch_rads_cpf`, `depth_m` (header recorded
   in `results/gaze_check.md`, "Gaze file columns").
-- 10 Hz, starting 0.03 s (median) after the trajectory, on the same device clock.
+- 10 Hz, starting 0.03 s (median) after the trajectory, stamped in the same device time. That the two are aligned
+  within a frame is an assumption: the check for it failed (see "Vestibulo-ocular check" and the alignment
+  decision).
 - Coverage: every validation and test clip; 359 of 159,186 training clips (4 takes) have no gaze. The coverage check
   used the labelled clip windows (`t0`-`t1`) of the released CSVs. The model's input window is wider, up to the
   stored window (`data_prep/step3_build_longseq.py:80-81`; `datasets/egoexo4d_pretrain.py:212-214`), so coverage

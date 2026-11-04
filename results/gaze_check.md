@@ -11,14 +11,17 @@ Scripts: [`scripts/gaze_check/`](../scripts/gaze_check/).
   `trajectory/closed_loop_trajectory.csv`.
 - The full trajectory download is 474 GB, but only that first timestamp is needed. `fetch_traj_t0.py` reads just the
   first and last 4 KB of each take's trajectory file (byte-range requests), for all 4,994 takes, in 3.5 minutes.
-  Gaze and trajectory share the Aria device clock (`tracking_timestamp_us`), so no other alignment is needed.
+  Gaze and trajectory are both stamped in Aria device time (`tracking_timestamp_us`), so no conversion between
+  clocks is needed. (Note, 4 Nov: whether the two streams are aligned within a frame was tested later and could not
+  be verified; see `src/camformer/data_files/egoexo4d/gaze_alignment_decision.txt` and `docs/gaze.md`.)
 - For each clip, `check_gaze.py` counts the gaze samples inside its window and the share of the window not covered
   by a gap longer than 0.25 s.
 
 ## Results
 - Gaze is sampled at a steady 10 Hz (spacing 100 ms at the 1st and 99th percentiles). The pose clips are at 20 Hz,
   so each gaze sample spans two pose frames.
-- Gaze starts 0.03 s after the trajectory (median; at most 0.10 s), so the two streams line up.
+- Gaze starts 0.03 s after the trajectory (median; at most 0.10 s), so the two streams cover the same time span.
+  (This checks coverage, not alignment within a frame; see the note above.)
 
 | Split | Clips | Takes | Clips without gaze | Clips with ≥95% coverage | Longest gap (99th pct.) |
 |---|---|---|---|---|---|

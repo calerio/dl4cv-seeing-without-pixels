@@ -34,5 +34,13 @@ interval over test takes only; says nothing about retraining):
   not retraining.
 - The reporting rule in `docs/gaze.md` needs three seeds per run, so none of its claims ("gaze helps", "frozen is
   enough", "no cost on physical") can be evaluated.
+- The shuffled controls are not the same kind on both splits, as the design note says (`docs/gaze.md`, "Donor
+  map" and "Shuffled input"). On test procedural clips 94.3% of donors come from another moment of the same take; on
+  test physical clips 42.6% come from another take of the same scenario, i.e. another person and session. A -shuf run
+  also sees the validity flag off on about 0.2-2.4% more frames than its real twin, mostly on physical clips. The
+  intervals above that exclude zero are all physical or overall, where the control differs most from the real input.
+- GF - G0 changes two things: G0 fine-tunes the whole encoder, GF freezes it and trains only the gaze layer. The
+  matching no-gaze model for GF is the released checkpoint (44.81 overall, 33.61 procedural); GF - GF-shuf is the
+  clean comparison for the frozen runs.
 - Alignment of gaze and pose was not verified (`data_files/egoexo4d/gaze_alignment_decision.txt`); small or absent
   gains are "no gain with gaze as aligned here", not evidence that gaze cannot help.
