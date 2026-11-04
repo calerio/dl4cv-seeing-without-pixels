@@ -36,14 +36,17 @@ against 33.50, 33.57, 33.16), so the bar would have passed experiment 1's own ef
 
 (Amended 4 Nov, after review and before any G result was computed: the first rule was worded "the loss is needed
 for the gain", which B' - G alone cannot show, and the second had no per-seed condition. Clarified the same day,
-also before any G result was read: how "in each seed" pairs the runs.)
+also before any G result was read: how "in each seed" pairs the runs, the code-reading status of the shared batches,
+and the check of the per-seed bar against B' - C. The training-equivalence result, with its tag, node and revisions,
+was added to the Comparability paragraph below after job 737619 finished.)
 
 **Comparability.** A, C and B' were trained on code a8fc1ec / bb5dc84; G was trained on 3d394e7. Since bb5dc84 the
 training code changed in ways meant to be inert with the experiment-1 flags (the clip loader was refactored, the
 encoder now always receives domain ids and gravity flags, the within-take block moved under a check for exo
 batches), but reading the code is not a measurement, and `check_reproduction.sh` only tests the released model, not
 training. So `scripts/slurm/check_training_equivalence.sh` trains one epoch of B' (seed 0; it uses every code path
-G uses) once on bb5dc84 and twice on the current code, on one node, and compares the weights. Rule, fixed before it
+G uses except the weight-0 branch of the within-take term, which G only logs without a gradient and which reads as
+inert in the code) once on bb5dc84 and twice on the current code, on one node, and compares the weights. Rule, fixed before it
 runs: old and new code are equivalent if they differ by at most twice the difference between the two current-code
 runs (GPU nondeterminism). If the check fails, B' - G and G - C are reported as descriptive only, confounded with the
 code revision.
@@ -60,7 +63,8 @@ scoring and evaluation files changed (`git diff --stat 3d394e7 82b14dd -- src/ca
 score_nymeria.py, eval_nymeria.sh and this check), none on the training path.) The check covers one
 epoch: a change that only acts in later epochs would not show. An independent reading of the code changes since
 bb5dc84 found none that depends on the epoch (the same-take sampler draws from the seeded random stream in every
-epoch, and the learning rate is constant). The revision of each run is recorded in the results file.
+epoch, and the learning rate is constant). The code revision of each G run is recorded with its results (`results/followups.md`, once written); the
+check itself is recorded in this paragraph.
 
 ## 2. Nymeria zero-shot
 
