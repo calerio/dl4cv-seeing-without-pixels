@@ -8,9 +8,10 @@ as the paper's supp. 2.2 states. The dataset's own poses index frames of a 12 FP
 some frames missing. A clip of T seconds therefore has about 12 T frames at 12 FPS and fps * T ViPE poses, so
     est = 12 * (number of ViPE poses) / (last 12 FPS frame index + 1).
 Missing frames at the end of the 12 FPS sequence can only make `est` too high, and rounding moves it by up to about
-0.6. The estimates fall into three groups, assigned as: est < 24.5 -> 24; 24.5 <= est < 27.5 -> 25; est >= 27.5 -> 30.
-Clips between the groups (25.5 to 29.5, or above 30.5) are marked `ambiguous`; clips outside 23 to 40 get no rate,
-and the loader then refuses them.
+0.6. The estimates fall into tight groups, assigned as: 14.5 <= est < 15.6 -> 15; 23 <= est < 24.5 -> 24;
+24.5 <= est < 27.5 -> 25; 27.5 <= est <= 40 -> 30. Clips between the groups (25.5 to 29.5, or above 30.5) are marked
+`ambiguous`. The few clips outside every group (first table: 69 of 99,501, 3 of them in the test) keep their own
+estimate as the rate and are marked `ambiguous` too, so no clip is dropped and the test set is unchanged.
 """
 
 import argparse
@@ -26,9 +27,11 @@ SPLITS = ['metadata_train_v1.csv', 'metadata_val_v1.csv', 'metadata_samevideo_te
 
 
 def native_fps(est):
-  if not 23.0 <= est <= 40.0:
-    return np.nan
-  return 24.0 if est < 24.5 else 25.0 if est < 27.5 else 30.0
+  if 14.5 <= est < 15.6:
+    return 15.0
+  if 23.0 <= est <= 40.0:
+    return 24.0 if est < 24.5 else 25.0 if est < 27.5 else 30.0
+  return round(est, 2)  # outside every group: the estimate itself (marked ambiguous)
 
 
 def main():
@@ -48,13 +51,14 @@ def main():
     est = 12.0 * len(inds) / (last + 1)
     rows.append((r.uid, len(inds), last, round(est, 3), native_fps(est)))
   out = pd.DataFrame(rows, columns=['uid', 'vipe_poses', 'last_12fps_index', 'est', 'fps'])
-  out['ambiguous'] = out['est'].between(25.5, 29.5) | (out['est'] > 30.5)
+  grouped = out['est'].between(14.5, 15.6, inclusive='left') | out['est'].between(23.0, 40.0)
+  out['ambiguous'] = out['est'].between(25.5, 29.5) | (out['est'] > 30.5) | ~grouped
   os.makedirs(os.path.dirname(opts.out), exist_ok=True)
   out.to_csv(opts.out, index=False)
   print(f'{len(out)} clips with ViPE poses written to {opts.out}')
-  print('native rate:', out['fps'].value_counts(dropna=False).sort_index().to_dict())
-  print(f"ambiguous (assigned, between the groups): {int(out['ambiguous'].sum())}"
-        f" ({100 * out['ambiguous'].mean():.1f}%); no rate: {int(out['fps'].isna().sum())}")
+  print('native rate:', out.loc[grouped, 'fps'].value_counts().sort_index().to_dict())
+  print(f"ambiguous (between or outside the groups): {int(out['ambiguous'].sum())}"
+        f" ({100 * out['ambiguous'].mean():.1f}%), of which outside every group: {int((~grouped).sum())}")
   print('est quantiles:', out['est'].quantile([0.001, 0.01, 0.5, 0.99, 0.999]).round(2).to_dict())
 
 
