@@ -10,12 +10,16 @@ were read. Motion-to-text accuracy (%) unless said otherwise.
 - **Tests:** `scripts/slurm/followup_evals.sh`, job 737586, code 82b14dd: `eval_run.sh` on G (Ego-Exo4D test) and
   `eval_nymeria.sh` on the released 16 s and 8 s checkpoints and on A, C, B', G (seeds 0-2).
 - **Every number below:** `scripts/slurm/followup_results.sh`, job 737920 (two-level bootstrap over seeds and test
-  takes or sessions, 10,000 resamples, seed 0). Experiment 1's text-to-motion comparisons: `scripts/slurm/exp1_t2m.sh`, job 737624, same method.
+  takes or sessions, 10,000 resamples, seed 0). Experiment 1's text-to-motion comparisons: `scripts/slurm/t2m_exp1.sh` (the file that ran, sha256
+  3d62971783d81b2ae71b3ff2e4d764d56eb5fcf3794985f94a0fa067daa1c912), job 737624, same method.
 - **Training equivalence** (`scripts/slurm/check_training_equivalence.sh`, job 737619, training code 82b14dd against
   bb5dc84; one epoch of B', seed 0): largest weight difference between two runs of the current code 0.000142, between
   old and current code 0.000166, between seed 1 and seed 0 of the current code (positive control) 0.00592, about 42
   times the noise. The check can tell a real change from GPU noise, and old and new code train alike (0.000166 <= 2 x
-  0.000142). So B' - G and G - C below are controlled comparisons. (A first run without the control, job 737585, gave
+  0.000142). G was trained on 3d394e7, not 82b14dd, but between the two only scoring and evaluation files changed
+  (`git diff --stat 3d394e7 82b14dd -- src/camformer scripts`: compare_runs.py, score_nymeria.py, eval_nymeria.sh
+  and the check script), none on the training path. So B' - G and G - C below are controlled comparisons, within
+  what a one-epoch check can show. (A first run without the control, job 737585, gave
   0.0002 and 0.000162.) The check covers one epoch only.
 
 ## 1. Grouping only (G)

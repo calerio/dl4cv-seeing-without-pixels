@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=exp1_t2m
+#SBATCH --job-name=t2m_exp1
 #SBATCH --partition=stud
 #SBATCH --qos=stud
 #SBATCH --cpus-per-task=2
@@ -7,8 +7,7 @@
 #SBATCH --time=00:30:00
 #SBATCH --output=out/%x_%j.out
 #SBATCH --error=err/%x_%j.err
-# Experiment 1, text-to-motion (planned in docs/hard_negatives.md): per-seed accuracies and the three comparisons.
-# Usage, from ~/dl4cv/camformer:  sbatch ~/dl4cv/exp1_t2m.sh   (job 737624 ran this script as audit/t2m_exp1.sh)
+# Experiment 1, text-to-motion: per-seed accuracies and the three comparisons (docs/hard_negatives.md plans m2t and t2m).
 module load sw/miniconda3; eval "$(conda shell.bash hook)"; conda activate camformer
 set -e
 echo "code revision $(cat REVISION)"

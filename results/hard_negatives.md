@@ -38,7 +38,7 @@ Each run is tested by
 
 ## Text-to-motion (descriptive)
 The design (`docs/hard_negatives.md`) planned both directions; the claims below are on motion-to-text, the paper's
-metric. Text-to-motion (a caption picks among five trajectories), job 737624 (`scripts/slurm/exp1_t2m.sh`):
+metric. Text-to-motion (a caption picks among five trajectories), job 737624 (`scripts/slurm/t2m_exp1.sh`, the file that ran, byte for byte):
 
 | Setup | Procedural (seeds 0 / 1 / 2) | Physical, mean | Overall, mean |
 |---|---|---|---|
