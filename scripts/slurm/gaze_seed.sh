@@ -56,12 +56,10 @@ if [ -z "$resume" ]; then
 fi
 
 run() {  # job name, extra flags
-  # Each run records the code revision it started on; a resumed run refuses to continue on a different revision,
-  # so no run mixes two code versions. A finished run is not tested again.
+  # train.py records the code revision a run started on and refuses to resume it on another one, so no run mixes
+  # two code versions. A finished run is not tested again.
   local d=~/data/logs/egoexo4d_pretrain_longseq/$1
-  local cmd="mkdir -p $d && { [ ! -f $d/REVISION_AT_START ] || [ \"\$(cat $d/REVISION_AT_START)\" = \"\$(cat REVISION)\" ] || \
-{ echo 'refusing to resume $1 on a different code revision' >&2; false; }; } && \
-{ [ -f $d/REVISION_AT_START ] || cp REVISION $d/REVISION_AT_START; } && bash ~/dl4cv/train.sh $BASE $2 --job_name $1"
+  local cmd="bash ~/dl4cv/train.sh $BASE $2 --job_name $1"
   [ -n "$tests" ] && cmd="$cmd && { [ -f $d/test_questions.csv ] || bash ~/dl4cv/eval_run.sh $1; }"
   echo "$cmd"
 }

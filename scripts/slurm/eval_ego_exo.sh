@@ -33,6 +33,7 @@ dir=~/data/logs/$dataset/$run
 mkdir -p ~/dl4cv/run_ckpts
 ckpt=~/dl4cv/run_ckpts/$run.ckpt
 ln -sf "$dir/checkpoints/last.ckpt" "$ckpt"
+python check_finished.py "$dir"  # score only a run whose last checkpoint is from its final epoch
 # Flags that change the model or its inputs, as the run used them.
 flags=$(python - "$dir/args.json" <<'PY'
 import json, sys

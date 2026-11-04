@@ -23,7 +23,8 @@ from models.text_encoder import ContextAwareTextEncoder
 import numpy as np
 import pytorch_lightning as pl
 from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix
-from tasks.pretrain import CLIPLoss, drop_frozen_clip, primary_verb, restore_frozen_clip, within_take_loss
+from tasks.pretrain import (CLIPLoss, check_no_dropped_layers, drop_frozen_clip, primary_verb, restore_frozen_clip,
+                            within_take_loss)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -111,14 +112,9 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
       if len(missing) < len(result.missing_keys):
         print('[init_ckpt] domain token or gaze layer not in checkpoint: starts at zero')
       result.missing_keys[:] = missing
-      dropped = [k for k in result.unexpected_keys if k.startswith(('domain_embed.', 'gaze_proj.'))]
-      if dropped:
-        # A trained domain token or gaze layer would be silently thrown away: the model would be scored without
-        # the part it was trained with. Fail instead of warning.
-        raise RuntimeError(
-            f"init_ckpt '{args.init_ckpt}' has trained weights this model does not use ({dropped[:2]}): pass the"
-            ' flags the run was trained with (--domain_token / --gaze, --gaze_input; see the run\'s args.json)'
-        )
+      check_no_dropped_layers(
+          result.unexpected_keys, args.init_ckpt,
+          "pass the flags the run was trained with (--domain_token / --gaze, --gaze_input; see the run's args.json)")
       if result.unexpected_keys:
         print(
             f'[init_ckpt] ignored {len(result.unexpected_keys)} non-encoder'
@@ -237,7 +233,7 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
       motion_features_avg = motion_features.mean(dim=1)
       cls_logits = self.cls_model(motion_features_avg)
       cls_loss = self.cls_criterion(cls_logits, scenario_labels)
-      total_loss = contrastive_loss + self.args.cls_loss_weight * cls_loss
+      total_loss = total_loss + self.args.cls_loss_weight * cls_loss  # keeps the within-take term, if any
       self.log(
           'train_cls_loss',
           cls_loss,
@@ -246,14 +242,8 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
           prog_bar=True,
           logger=True,
       )
-      self.log(
-          'train_total_loss',
-          total_loss,
-          on_step=True,
-          on_epoch=True,
-          prog_bar=True,
-          logger=True,
-      )
+    # The loss actually optimised (contrastive plus any within-take and classification terms).
+    self.log('train_total_loss', total_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
     self.log(
         'train_loss',

@@ -35,6 +35,7 @@ dir=~/data/logs/egoexo4d_pretrain_longseq/$run
 mkdir -p ~/dl4cv/run_ckpts
 ckpt=~/dl4cv/run_ckpts/$run.ckpt
 ln -sf "$dir/checkpoints/last.ckpt" "$ckpt"
+python check_finished.py "$dir"  # score only a run whose last checkpoint is from its final epoch
 gaze=$(python - "$dir/args.json" <<'PY'
 import json, sys
 a = json.load(open(sys.argv[1]))
