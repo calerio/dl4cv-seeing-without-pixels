@@ -242,14 +242,8 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
           prog_bar=True,
           logger=True,
       )
-      self.log(
-          'train_total_loss',
-          total_loss,
-          on_step=True,
-          on_epoch=True,
-          prog_bar=True,
-          logger=True,
-      )
+    # The loss actually optimised (contrastive plus any within-take and classification terms).
+    self.log('train_total_loss', total_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
     self.log(
         'train_loss',

@@ -16,13 +16,16 @@ def test_same_take_sampler():
   takes = [f't{i // 20}' for i in range(200)]  # 10 takes of 20 clips, 1 s apart
   times = [float(i % 20) for i in range(200)]
   s = SameTakeBatchSampler(takes, times, batch_size=32, k=8, min_gap=4.0)
+  used = []  # record the groups this very epoch was built from
+  build = s._groups
+  s._groups = lambda: used.append(build()) or used[-1]
   batches = list(iter(s))
-  assert len(batches) == len(s) == 200 // 32
+  assert len(used) == 1 and len(batches) == len(s) == 200 // 32
   seen = [i for b in batches for i in b]
   assert len(seen) == len(set(seen)) and all(len(b) == 32 for b in batches)
-  # rebuild the groups the sampler used: each has at most k clips of one take, at least min_gap apart
-  random.seed(0)
-  for g in s._groups():
+  assert seen == [i for g in used[0] for i in g][: len(seen)]  # batches are the groups, packed in order
+  # each group: at most k clips of one take, at least min_gap apart
+  for g in used[0]:
     assert len(g) <= 8 and len({takes[i] for i in g}) == 1
     assert all(abs(times[a] - times[b]) >= 4.0 for a in g for b in g if a != b)
 

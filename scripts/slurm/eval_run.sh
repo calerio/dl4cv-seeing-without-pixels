@@ -35,16 +35,7 @@ dir=~/data/logs/egoexo4d_pretrain_longseq/$run
 mkdir -p ~/dl4cv/run_ckpts
 ckpt=~/dl4cv/run_ckpts/$run.ckpt
 ln -sf "$dir/checkpoints/last.ckpt" "$ckpt"
-
-# Score only a finished run: the checkpoint must be from the last epoch the run was set to train.
-python - "$dir/args.json" "$dir/checkpoints/last.ckpt" <<'PY'
-import json, sys
-import torch
-epochs = json.load(open(sys.argv[1]))['epochs']
-epoch = torch.load(sys.argv[2], map_location='cpu', weights_only=False)['epoch']
-if epoch + 1 != epochs:
-  sys.exit(f'{sys.argv[2]}: checkpoint of epoch {epoch + 1} of {epochs}; training has not finished')
-PY
+python check_finished.py "$dir"  # score only a run whose last checkpoint is from its final epoch
 gaze=$(python - "$dir/args.json" <<'PY'
 import json, sys
 a = json.load(open(sys.argv[1]))
