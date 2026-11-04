@@ -109,6 +109,7 @@ class DynPoseCamTextPair(torch.utils.data.Dataset):
     self.fps_table = None
     if fps_table:
       assert self.pose_source == 'vipe', '--exo_fps_table holds ViPE frame rates'
+      assert self.resample_hz > 0, '--exo_fps_table is used only when resampling (--exo_resample_hz)'
       if not os.path.isabs(fps_table):  # relative to our data_files/ (not the upstream dynpose100k/ link)
         fps_table = os.path.join(os.path.dirname(_PKG_DATA_FILES_DIR), fps_table)
       t = pd.read_csv(fps_table)
@@ -146,6 +147,10 @@ class DynPoseCamTextPair(torch.utils.data.Dataset):
         'pose_scale' if self.pose_source == 'original' else 'vipe_pose_scale'
     )
     self.df = df[df[col_name] < self.scale_threshold].reset_index(drop=True)
+    if self.fps_table is not None:  # every clip must have a rate; check now, not hours into training
+      missing = ~self.df['uid'].isin(self.fps_table.keys())
+      if missing.any():
+        raise ValueError(f'{int(missing.sum())} clips have no rate in --exo_fps_table, e.g. {self.df.uid[missing].iloc[0]}')
     print(f'DynPose mode={self.mode}: loaded {len(self.df)}/{len(df)} samples')
 
   def __len__(self):
@@ -172,9 +177,7 @@ class DynPoseCamTextPair(torch.utils.data.Dataset):
     if self.resample_hz > 0:
       src_hz = NATIVE_FPS[self.pose_source]
       if self.fps_table is not None:
-        src_hz = float(self.fps_table[row['uid']])  # a clip missing from the table fails here, loudly
-        if not np.isfinite(src_hz):
-          raise ValueError(f"{row['uid']}: no native frame rate in the table")
+        src_hz = float(self.fps_table[row['uid']])
       poses = resample_poses(poses, src_hz, self.resample_hz)
     poses = poses[:: self.sample_rate]
     caption = row['description_text'][: self.approx_max_chars]

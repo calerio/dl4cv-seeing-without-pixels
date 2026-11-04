@@ -51,5 +51,5 @@ $(train --dataset egoexo4d_pretrain_longseq $EGO $INIT_EGO --job_name $SEGO) && 
 
 for cmd in "$gpu1" "$gpu2"; do
   sbatch --parsable --account="$USER" --partition=stud --qos=stud --gres=gpu:1 --cpus-per-task=6 --mem=48G \
-      --time=12:00:00 --job-name=ee${variant#v1}_s$seed --output=out/%x_%j.out --error=err/%x_%j.err --wrap="$cmd"
+      --time=12:00:00 --job-name=$([ "$variant" = v2 ] && echo ee2 || echo ee)_s$seed --output=out/%x_%j.out --error=err/%x_%j.err --wrap="$cmd"
 done

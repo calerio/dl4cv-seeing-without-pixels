@@ -21,7 +21,7 @@ interfere. The runs below separate the two effects.
 | | Ego-Exo4D (ego) | DynPose-100K (exo) |
 |---|---|---|
 | Training pairs | 159,186 (narrations) | 88,151 after the scale filter (Panda70M captions) |
-| Pose source | Aria glasses, downsampled to 20 FPS (supp. 2.2) | video estimates: dataset's own at 12 FPS, ViPE at 30 FPS per supp. 2.2, in fact at each video's rate: 24, 25 or 30 (D6) |
+| Pose source | Aria glasses, downsampled to 20 FPS (supp. 2.2) | video estimates: dataset's own at 12 FPS, ViPE at 30 FPS per supp. 2.2, in fact at each video's rate: mostly 30, 25 or 24, a few 15, and some clips that fit no standard rate (D6) |
 | Pose encoding | relative to the middle frame, 6D rotation, plus a gravity token (`rel9d_grav`) | same without gravity (`rel9d`); gravity "is omitted when processing poses estimated from monocular videos" (supp. 2.3) |
 | Clip | a context window of up to 8 s around the narration; only the labelled sub-window is pooled (`tasks/pretrain_longseq.py`) | the whole short clip, mean-pooled (`tasks/pretrain.py`) |
 | Translation | metric (SLAM) | scale from the estimator; clips with `pose_scale` ≥ 20 are dropped |

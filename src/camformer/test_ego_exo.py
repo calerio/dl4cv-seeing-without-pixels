@@ -92,6 +92,17 @@ def test_fps_table():
         return [len(ds[i][0]) for i in range(len(ds))]
       assert lengths(os.path.join(d, 'fps.csv')) == [41, 41]
       assert lengths('') == [33, 41]
+      # a clip missing from the table, and a table without resampling, fail when the dataset is built
+      pd.DataFrame(dict(uid=['a'], fps=[24.0])).to_csv(os.path.join(d, 'part.csv'), index=False)
+      for table, hz in ((os.path.join(d, 'part.csv'), 20.0), (os.path.join(d, 'fps.csv'), 0.0)):
+        args = argparse.Namespace(encode_pose=2, sample_rate=1, pose_source='vipe', exo_resample_hz=hz,
+                                  exo_to_aria_axes=False, exo_fps_table=table)
+        try:
+          dynpose.DynPoseCamTextPair(args, 'train')
+        except (AssertionError, ValueError):
+          pass
+        else:
+          raise AssertionError(f'{table} at {hz} Hz was accepted')
     finally:
       dynpose._resolve_csv, dynpose._DEFAULT_DATA_DIR = saved
 

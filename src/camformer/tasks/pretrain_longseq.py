@@ -382,6 +382,8 @@ class CameraPoseTextPretrainingLongSeq(pl.LightningModule):
           f'final_data/retrieval_features/ours/{a.dataset}_exo/{tag}/{a.exo_eval_split}_{a.pose_source}'
           f'_hz{a.exo_resample_hz:g}_aria{int(a.exo_to_aria_axes)}'
       )
+      if getattr(a, 'exo_fps_table', ''):  # per-clip rates (D6): never share a folder with the 30-FPS version
+        save_dir += '_' + os.path.basename(a.exo_fps_table).split('.')[0]
     os.makedirs(save_dir, exist_ok=True)
     torch.save(all_features, os.path.join(save_dir, 'frames.pt'))
     torch.save(all_text_features, os.path.join(save_dir, 'text.pt'))
