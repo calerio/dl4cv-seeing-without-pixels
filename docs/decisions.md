@@ -76,9 +76,11 @@ For the record, the seed-0 comparison on the test (`python compare_runs.py --a p
 files being each run's `test_questions.csv` from `eval_run.sh`; 10,000 take resamples, seed 0): B' minus A is
 +3.82 points on procedural questions (95% interval +2.50 to +5.18) and +2.43 overall (+1.25 to +3.48).
 
-**Rule for the final claim, written 18 Oct at 11:39 (commit 7d415c8).** Seeds 1 and 2 of A and B' had
-finished on the cluster by then (their test tables were written between 03:34 and 07:27 that morning), but none of
-their results had been read; the rule's thresholds were set knowing seed 0's test result. (Corrected 4 Nov: this
+**Rule for the final claim, written 18 Oct at 11:39 (commit 7d415c8; all times Central European Summer Time, as
+on the cluster).** The go decision for seeds 1 and 2 was committed at 00:46 (44f1978) and the seeds were submitted
+at 00:47 (jobs 705874-705877). By 11:39 seeds 1 and 2 of A and B' had finished (test tables written between 03:34
+and 07:27), and so had C's seeds 0 and 2 (09:17, 10:47); C's seed 1 finished at 12:12. None of these results had
+been read when the rule was written; its thresholds were set knowing seed 0's test result. (Corrected 4 Nov: this
 heading said "fixed 18 Oct before any result of seeds 1 and 2 is seen".) On motion-to-text
 accuracy, comparing B' with A over seeds 0-2 with `compare_runs.py` (two-level bootstrap over seeds and takes):
 - "Same-take negatives improve procedural accuracy" is claimed only if the 95% interval of B' minus A on

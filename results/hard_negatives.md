@@ -60,11 +60,12 @@ read, and knowing seed 0's test result (D3).
 
 ## Limits
 - The go decision for seeds 1 and 2 rested on seed 0's test result and on a post-hoc reading of one gate criterion
-  (D3). Seeds 1 and 2, trained after that decision, each show the gain on their own.
+  (D3). Seeds 1 and 2, submitted a minute after that decision (00:46 and 00:47 on 18 Oct), each show the gain on
+  their own.
 - The design itself followed test results: the move from run B (grouping, no loss term) to B' came after B scored
   44.84 on the test (D3).
 - B' changes two things together: batches grouped by take, and the within-take loss. The loss needs the grouping to
   have same-take pairs to work on. Grouping without the loss gave no gain in an earlier, unseeded run (16 Oct), which
-  is supporting evidence only: that run also used a different mask and no seed. Setup G (`docs/followups.md`)
+  is supporting evidence only: that run also used a different mask and no seed. A follow-up setup without the loss term (G)
   tests grouping without the loss directly.
 - Seeds vary training only; all runs share one test set of 7,079 questions from 671 takes.
