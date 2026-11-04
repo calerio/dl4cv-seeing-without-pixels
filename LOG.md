@@ -2,6 +2,24 @@
 
 What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 
+## Wed 4 Nov 2026
+- Follow-ups to experiment 1 finished ([`results/followups.md`](results/followups.md)). The within-take loss term
+  carries the gain: B' beats G (grouping without the term) by 3.18 points on procedural questions (interval +1.95 to
+  +4.49), in every seed; grouping alone shows no gain over C. A check with a positive
+  control shows the newer code trains like the code A, C and B' were trained on. On Nymeria, no setup differs
+  measurably from the baseline.
+- Added the planned text-to-motion results for experiment 1 ([`results/hard_negatives.md`](results/hard_negatives.md)):
+  the gain is much smaller in that direction.
+- Audit of code, statistics and every statement about the paper; corrections merged (wording, parameter count,
+  checkpoint selection, when each rule was written, gaze control caveats).
+- Found that about a third of the DynPose-100K clips are 24 or 25 FPS videos that experiment 2 resampled as 30 FPS;
+  built a per-clip frame-rate table and started experiment 2 again with it, all five setups and seeds 0-2 on one
+  code revision (decision D6; jobs 738234-738237, code 17a1a42).
+- Added guards: a run cannot resume on another code revision or epoch count, and an unfinished run cannot be scored.
+- Added [`src/camformer/CHANGES.md`](src/camformer/CHANGES.md): what we changed in the authors' code, file by file.
+
+**Next:** experiment 2, version 2 (seeds 0-2), then its results file.
+
 ## Tue 3 Nov 2026
 - Merged the experiment 3 design, code and seed-0 results ([`docs/gaze.md`](docs/gaze.md),
   [`results/gaze.md`](results/gaze.md)).
