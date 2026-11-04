@@ -41,6 +41,6 @@ gpu2="$(train --dataset $J $EGO $EXO $INIT_EGO --job_name $U0) && $(test_longseq
 $(train --dataset egoexo4d_pretrain_longseq $EGO $INIT_EGO --job_name $SEGO) && $(test_longseq egoexo4d_pretrain_longseq $SEGO) ego"
 
 for cmd in "$gpu1" "$gpu2"; do
-  sbatch --parsable --account=3195720 --partition=stud --qos=stud --gres=gpu:1 --cpus-per-task=6 --mem=48G \
+  sbatch --parsable --account="$USER" --partition=stud --qos=stud --gres=gpu:1 --cpus-per-task=6 --mem=48G \
       --time=12:00:00 --job-name=ee_s$seed --output=out/%x_%j.out --error=err/%x_%j.err --wrap="$cmd"
 done
