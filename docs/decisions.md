@@ -3,6 +3,20 @@
 Choices that change how we run or compare experiments, with the reason for each. Newest first.
 Each one is meant to be cited in the report.
 
+## D5. Follow-ups: a grouping-only setup, and Nymeria scored against the 8-second model (3 Nov 2026)
+
+**Situation.** Experiment 1's gain mixes two changes (grouping by take, within-take loss), and the README promises
+Nymeria zero-shot results, which the paper reports for its 16-second checkpoint while all our runs start from the
+8-second one.
+
+**Decision.** Train G (grouping and verb mask, no loss term; seeds 0-2) on current code, and check separately that
+the current code trains like the revision B' and C were trained on (`check_training_equivalence.sh`; the regression
+check covers only the released model). Score experiment-1 models on Nymeria through the authors' test path,
+resampling recording sessions, compared only with the released 8-second model scored the same way; the 16-second
+model is scored once to show the gap. Experiment 2 and 3 models are not
+scored on Nymeria (that path feeds neither the domain token nor gaze). Design, tables and rules in
+[`followups.md`](followups.md).
+
 ## D4. Experiment 2 puts exo trajectories through the ego model's input path (18 Oct 2026)
 
 **Situation.** The joint model (docs/ego_exo.md) needs exo (DynPose, ViPE poses) and ego (Ego-Exo4D) clips in one
