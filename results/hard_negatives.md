@@ -38,7 +38,7 @@ Each run is tested by
 
 ## Text-to-motion (descriptive)
 The design (`docs/hard_negatives.md`) planned both directions; the claims below are on motion-to-text, the paper's
-metric. Text-to-motion (a caption picks among five trajectories), job 737624 (`compare_runs.py --metric t2m`):
+metric. Text-to-motion (a caption picks among five trajectories), job 737624 (`scripts/slurm/exp1_t2m.sh`):
 
 | Setup | Procedural (seeds 0 / 1 / 2) | Physical, mean | Overall, mean |
 |---|---|---|---|
@@ -54,8 +54,10 @@ metric. Text-to-motion (a caption picks among five trajectories), job 737624 (`c
 | C - A | procedural | +0.27 | -0.74 to +1.19 |
 
 The gain is much smaller in this direction, every interval includes zero, and in seed 1 B' is below A and C on
-procedural questions. Both loss terms train the two directions equally (`tasks/pretrain.py`, `CLIPLoss` and
-`within_take_loss`), so this is a result, not a training artefact; why the gain is one-sided was not tested. B'
+procedural questions. By reading the code, both loss terms are symmetric, averaging the
+motion-to-text and text-to-motion cross-entropies (`tasks/pretrain.py`, `CLIPLoss` and `within_take_loss`), so the
+asymmetry does not come from training one direction only; no run logged the two directions' losses separately, and
+why the gain is one-sided was not tested. B'
 trains on the test's own construction (wrong options from the same recording with another verb), which a reader
 should keep in mind; the Nymeria follow-up (`results/followups.md`) finds no measurable change there either.
 

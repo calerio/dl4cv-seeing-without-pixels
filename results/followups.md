@@ -10,7 +10,7 @@ were read. Motion-to-text accuracy (%) unless said otherwise.
 - **Tests:** `scripts/slurm/followup_evals.sh`, job 737586, code 82b14dd: `eval_run.sh` on G (Ego-Exo4D test) and
   `eval_nymeria.sh` on the released 16 s and 8 s checkpoints and on A, C, B', G (seeds 0-2).
 - **Every number below:** `scripts/slurm/followup_results.sh`, job 737920 (two-level bootstrap over seeds and test
-  takes or sessions, 10,000 resamples, seed 0). Experiment 1's text-to-motion comparisons: job 737624, same method.
+  takes or sessions, 10,000 resamples, seed 0). Experiment 1's text-to-motion comparisons: `scripts/slurm/exp1_t2m.sh`, job 737624, same method.
 - **Training equivalence** (`scripts/slurm/check_training_equivalence.sh`, job 737619, training code 82b14dd against
   bb5dc84; one epoch of B', seed 0): largest weight difference between two runs of the current code 0.000142, between
   old and current code 0.000166, between seed 1 and seed 0 of the current code (positive control) 0.00592, about 42
