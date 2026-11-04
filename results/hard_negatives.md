@@ -57,7 +57,7 @@ The gain is much smaller in this direction, every interval includes zero, and in
 procedural questions. Both loss terms train the two directions equally (`tasks/pretrain.py`, `CLIPLoss` and
 `within_take_loss`), so this is a result, not a training artefact; why the gain is one-sided was not tested. B'
 trains on the test's own construction (wrong options from the same recording with another verb), which a reader
-should keep in mind; the Nymeria follow-up (`results/followups.md`) finds no transfer of the gain either.
+should keep in mind; the Nymeria follow-up (`results/followups.md`) finds no measurable change there either.
 
 ## Comparisons over three seeds
 `python compare_runs.py --a <A or C files> --b <B' files>` (two-level bootstrap over seeds and takes, 10,000
