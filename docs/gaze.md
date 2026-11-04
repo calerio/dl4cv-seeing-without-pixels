@@ -9,7 +9,7 @@ Ego-Exo4D? And is it enough to train only a small new gaze input on top of the r
 encoder need retraining?
 
 **Hypothesis.** The paper finds the trajectory weakest on procedural activities, "where camera motions are more
-localized and subtle" (Sec. 4, in the activity-classification discussion around Fig. 3c; Table 2 shows the same
+localized and subtle" (Sec. 5.1, p. 5, in the activity-classification discussion around Fig. 3c; Table 2 shows the same
 pattern on retrieval). Its Limitations add that the trajectory carries no noun semantics; gaze will not add those
 either, so the hypothesis is at the level of verbs (what the hands are doing), which is what the 5-way questions test. In those tasks the head moves little while the eyes move between
 the hands, a tool and the object being worked on. Gaze should carry part of what the head no longer shows, so the
@@ -17,8 +17,8 @@ gain, if any, should be largest on procedural questions. If gaze only duplicates
 
 ## What the paper did
 The paper uses camera trajectory only. It never uses gaze; the word does not appear in the main paper or the
-supplement. Its comparisons with other modalities are with video (Table 2: fusing trajectory and EgoVLPv2 video
-features helps on procedural activities). So this experiment has no reference number in the paper: the comparison is
+supplement. Table 2 compares it with audio, IMU, image and video encoders, and fuses it only with video (trajectory plus
+EgoVLPv2 video features helps on procedural activities). So this experiment has no reference number in the paper: the comparison is
 entirely between our own runs, all starting from the released checkpoint.
 
 ## Data (measured, `results/gaze_check.md`)
