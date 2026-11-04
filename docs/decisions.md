@@ -8,7 +8,11 @@ Each one is meant to be cited in the report.
 **Situation.** D4 resamples exo clips "from 30 to 20 FPS", taking supp. 2.2's 30 FPS for every ViPE clip. ViPE
 gives one pose per video frame at the video's own rate, and about a third of the DynPose-100K videos are 24 or 25
 FPS (`src/camformer/dynpose_fps.py`: the rate follows from the number of ViPE poses and the length of the
-dataset's own 12 FPS frame sequence; the estimates fall into tight groups at 24, 25 and 30). In E->X, U0 and U1
+dataset's own 12 FPS frame sequence; the estimates fall into tight groups). Table
+`src/camformer/data_files/dynpose100k_fps/vipe_fps_v1.csv.gz` (job 737912, code as in this decision's PR; sha256 of
+the uncompressed CSV `4c5070d64c2be20ce3bc90a5369f96e80876417eb67b9b4bb6be4c3d468435f7`): 99,501 clips, 65,309 at 30 FPS, 17,680 at
+25, 16,443 at 24 and 46 at 15; 4,642 lie between the groups and are assigned by the rule in `dynpose_fps.py`, and 23
+lie outside every group and keep their own estimate (both marked `ambiguous`). In E->X, U0 and U1
 those clips therefore entered at 16 to 17 poses per second instead of 20. Training and test handled them the same
 way, so nothing was mis-scored, but D4's statement was false for those clips and the joint models saw two
 different pose rates for exo data.
