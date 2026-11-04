@@ -1,5 +1,11 @@
 # Experiment 1: same-take hard negatives (design, 16 Oct 2026)
 
+> **Read with D3.** This is the first design. After the first two runs (scored on the test: 44.79 and 44.84, no
+> change), the design was revised before any seeded run: a within-take loss term was added (setup B'), a pilot gate
+> was set, and the comparison became a two-level bootstrap over three seeds and takes (`compare_runs.py`). The
+> revised design and its rules are decision D3 in [`decisions.md`](decisions.md); results in
+> [`results/hard_negatives.md`](../results/hard_negatives.md).
+
 ## Idea
 CamFormer is trained with a contrastive loss: in a batch of 1,024 (camera motion, caption) pairs, each motion
 must pick its own caption out of the 1,024. Batches are drawn at random from 159k training clips in 2,820
