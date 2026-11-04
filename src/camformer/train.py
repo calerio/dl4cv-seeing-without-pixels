@@ -259,23 +259,10 @@ def train(args):
   args.log_dir = os.path.join(os.path.expanduser('~/data'), args.log_dir)
   log_dir = os.path.join(args.log_dir, args.dataset, args.job_name)
   os.makedirs(log_dir, exist_ok=True)
+  if not args.test:
+    check_resume(args, log_dir)
   with open(os.path.join(log_dir, 'args.json'), 'w') as f:
     json.dump(vars(args), f, indent=4)
-  # A run continued across cluster jobs must not mix code revisions: the first start records the revision, and a
-  # resume on a different one is refused (scripts/deploy.sh writes REVISION).
-  if not args.test and os.path.exists('REVISION'):
-    revision = open('REVISION').read().strip()
-    start_file = os.path.join(log_dir, 'REVISION_AT_START')
-    resuming = args.resume and os.path.exists(os.path.join(log_dir, 'checkpoints', 'last.ckpt'))
-    if os.path.exists(start_file):
-      started = open(start_file).read().strip()
-      if resuming and started != revision:
-        raise SystemExit(f'refusing to resume {log_dir} on code revision {revision}: it started on {started}')
-    elif resuming:
-      print(f'[resume] {log_dir} has no recorded start revision; resuming on {revision}')
-    else:
-      with open(start_file, 'w') as f:
-        f.write(revision + '\n')
 
   if args.same_take_k > 0 and args.num_gpus > 1:
     raise ValueError('--same_take_k supports one GPU only')
@@ -344,6 +331,34 @@ def train(args):
 
   end_time = time.time()
   print(f'Total time taken: {end_time - start_time} seconds')
+
+
+def check_resume(args, log_dir, revision=''):
+  """A run continued across cluster jobs must not change code revision or epoch count. Runs before args.json is
+  rewritten, so a refused resume leaves the run's files as they were. scripts/deploy.sh writes REVISION; tests pass
+  `revision` directly (None = unknown)."""
+  if revision == '':
+    rev_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'REVISION')
+    revision = open(rev_path).read().strip() if os.path.exists(rev_path) else None
+  if revision is None:
+    print(f'[revision] no REVISION file next to train.py: the code revision of {log_dir} is not recorded or checked')
+  start_file = os.path.join(log_dir, 'REVISION_AT_START')
+  resuming = args.resume and os.path.exists(os.path.join(log_dir, 'checkpoints', 'last.ckpt'))
+  if resuming:
+    old_args = os.path.join(log_dir, 'args.json')
+    if os.path.exists(old_args):
+      old_epochs = json.load(open(old_args)).get('epochs')
+      if old_epochs != args.epochs:
+        raise SystemExit(f'refusing to resume {log_dir} with --epochs {args.epochs}: it was started with {old_epochs}')
+    if revision is not None and os.path.exists(start_file):
+      started = open(start_file).read().strip()
+      if started != revision:
+        raise SystemExit(f'refusing to resume {log_dir} on code revision {revision}: it started on {started}')
+    elif revision is not None:
+      print(f'[revision] {log_dir} had no recorded start revision; recording {revision} from this resume on')
+  if revision is not None and (not resuming or not os.path.exists(start_file)):
+    with open(start_file, 'w') as f:  # a fresh start (or the first check of an older run) records the revision
+      f.write(revision + '\n')
 
 
 if __name__ == '__main__':
