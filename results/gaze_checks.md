@@ -1,16 +1,17 @@
 # Experiment 3 checks: job logs (key lines, verbatim)
 
 Copied from the cluster job outputs (`~/dl4cv/camformer/out/`) so the numbers in `docs/gaze.md` can be traced.
+Home directory paths are shortened to `~`; everything else is as printed.
 The donor lines of jobs 709477 (one rule, 65,301 windows without a donor) and 709874 (two rules, no split
 restriction) are superseded by job 709883 (two rules within split groups), whose output is the committed map.
 
 ## Job 709477
 ```
 code revision d900001
-[cache] 3597 takes cached to /home/3195720/dl4cv/data/egoexo4d/gaze_cache; 4 without gaze file or traj_t0
+[cache] 3597 takes cached to ~/dl4cv/data/egoexo4d/gaze_cache; 4 without gaze file or traj_t0
 [khz] 3601 takes. max(end_time) - trajectory length (s): max +0.0010, takes over +0.005: 0; takes within 0.005 of the end: 3360
 [khz] OK: no clip ends after its trajectory
-[donors] 207176 clip windows, 141875 with a donor, 65301 without; same take: True; overlapping in time: 0; written to /mnt/beegfsstudents/home/3195720/dl4cv/camformer/data_files/egoexo4d/gaze_donors_v1.csv.gz
+[donors] 207176 clip windows, 141875 with a donor, 65301 without; same take: True; overlapping in time: 0; written to ~/dl4cv/camformer/data_files/egoexo4d/gaze_donors_v1.csv.gz
 [coverage] train physical   clips  19869  mean valid share 99.67%  clips with >=90% valid 99.67%
 [coverage] train procedural clips  10131  mean valid share 100.00%  clips with >=90% valid 100.00%
 [coverage] val   physical   clips  26493  mean valid share 100.00%  clips with >=90% valid 100.00%
@@ -51,7 +52,7 @@ code revision e0abf27
 ## Job 709874
 ```
 code revision 77f7cc7
-[donors] 207176 clip windows written to /mnt/beegfsstudents/home/3195720/dl4cv/camformer/data_files/egoexo4d/gaze_donors_v1.csv.gz; checks passed
+[donors] 207176 clip windows written to ~/dl4cv/camformer/data_files/egoexo4d/gaze_donors_v1.csv.gz; checks passed
 [donors] train physical   clips 104920  same take  42146 ( 40.2%)  other take, same scenario  62774 ( 59.8%)  none 0
 [donors] train procedural clips  54266  same take  51050 ( 94.1%)  other take, same scenario   3216 (  5.9%)  none 0
 [donors] val   physical   clips  26493  same take   9684 ( 36.6%)  other take, same scenario  16809 ( 63.4%)  none 0
@@ -99,7 +100,7 @@ all gaze tests passed
 ```
 code revision ee408bd
 [donors] sha256 of the CSV content: 2172ba9551d8d09b40b9fa9f82d0a177fc5bb0692d6f9c22e5c938383b848ffa
-[donors] 207176 clip windows written to /mnt/beegfsstudents/home/3195720/dl4cv/camformer/data_files/egoexo4d/gaze_donors_v1.csv.gz; checks passed
+[donors] 207176 clip windows written to ~/dl4cv/camformer/data_files/egoexo4d/gaze_donors_v1.csv.gz; checks passed
 [donors] train physical   clips 104920  same take  42146 ( 40.2%)  other take, same scenario  62774 ( 59.8%)  none 0
 [donors] train procedural clips  54266  same take  51050 ( 94.1%)  other take, same scenario   3216 (  5.9%)  none 0
 [donors] val   physical   clips  26493  same take   9684 ( 36.6%)  other take, same scenario  16809 ( 63.4%)  none 0

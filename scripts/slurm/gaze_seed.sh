@@ -16,7 +16,7 @@ cd ~/dl4cv/camformer
 mkdir -p out err ~/dl4cv/run_ckpts
 
 sub() {  # job name suffix, command, time limit
-  sbatch --parsable --account=3195720 --partition=stud --qos=stud --gres=gpu:1 --cpus-per-task=6 --mem=48G \
+  sbatch --parsable --account="$USER" --partition=stud --qos=stud --gres=gpu:1 --cpus-per-task=6 --mem=48G \
       --time=$3 --job-name=gz_$1 --output=out/%x_%j.out --error=err/%x_%j.err --wrap="$2"
 }
 
