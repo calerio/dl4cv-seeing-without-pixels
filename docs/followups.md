@@ -28,9 +28,11 @@ plus G's per-seed rows in the per-seed table.
 - "Grouping alone helps": interval of G - C on procedural above zero, and G above C in each seed (the same bar as
   B' - G). Otherwise we write that no gain from grouping alone was detected, not that grouping has no effect.
 
-"In each seed" pairs runs by seed number, as D3 did: seed s of one setup against seed s of the other, for s = 0, 1
-and 2, all three required. B' and G share the same-take sampler, so the same seed number gives them the same
-random draws for batch composition; C uses random batches, so for G - C the pairing is by number only.
+"In each seed" pairs runs by seed number: seed s of one setup against seed s of the other, for s = 0, 1 and 2, all
+three required. (By reading the code, B' and G, which share the same-take sampler and its seeded random stream, also
+draw the same batches for the same seed number; this was not measured, and the rule does not depend on it.) Checked
+against a result we already trust: on procedural questions B' is above C in all three seeds (37.09, 36.44, 37.20
+against 33.50, 33.57, 33.16), so the bar would have passed experiment 1's own effect.
 
 (Amended 4 Nov, after review and before any G result was computed: the first rule was worded "the loss is needed
 for the gain", which B' - G alone cannot show, and the second had no per-seed condition. Clarified the same day,
@@ -50,7 +52,9 @@ code revision.
 two runs of the new code. Reviewers pointed out that it had no positive control: if GPU noise alone is as large as a
 real change, any code would pass. The check now adds a run of the current code with seed 1, a change known to
 matter, and counts only if that run differs at least 5 times more than the GPU noise; otherwise it is reported as
-uninformative and B' - G and G - C as descriptive. It is rerun in full under a new tag.) The check covers one
+uninformative and B' - G and G - C as descriptive. It is rerun in full under a new tag. Result, job 737619: same-code
+noise 0.000142, old against new code 0.000166, seed 1 against seed 0 0.00592, about 42 times the noise: informative
+and equivalent; details in `results/followups.md`.) The check covers one
 epoch: a change that only acts in later epochs would not show. An independent reading of the code changes since
 bb5dc84 found none that depends on the epoch (the same-take sampler draws from the seeded random stream in every
 epoch, and the learning rate is constant). The revision of each run is recorded in the results file.
