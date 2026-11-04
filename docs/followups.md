@@ -52,9 +52,12 @@ code revision.
 two runs of the new code. Reviewers pointed out that it had no positive control: if GPU noise alone is as large as a
 real change, any code would pass. The check now adds a run of the current code with seed 1, a change known to
 matter, and counts only if that run differs at least 5 times more than the GPU noise; otherwise it is reported as
-uninformative and B' - G and G - C as descriptive. It is rerun in full under a new tag. Result, job 737619: same-code
-noise 0.000142, old against new code 0.000166, seed 1 against seed 0 0.00592, about 42 times the noise: informative
-and equivalent; details in `results/followups.md`.) The check covers one
+uninformative and B' - G and G - C as descriptive. It is rerun in full under a new tag. Result, job 737619 (tag
+`bb5dc84_v2`, node gnode02; old code bb5dc84 in `~/dl4cv/camformer_bb5dc84`, new code 82b14dd; the check script as
+of commit 80d512f): same-code noise 0.000142, old against new code 0.000166, seed 1 against seed 0 0.00592, about 42
+times the noise: informative and equivalent. G itself was trained on 3d394e7; between 3d394e7 and 82b14dd only
+scoring and evaluation files changed (`git diff --stat 3d394e7 82b14dd -- src/camformer scripts`: compare_runs.py,
+score_nymeria.py, eval_nymeria.sh and this check), none on the training path.) The check covers one
 epoch: a change that only acts in later epochs would not show. An independent reading of the code changes since
 bb5dc84 found none that depends on the epoch (the same-take sampler draws from the seeded random stream in every
 epoch, and the learning rate is constant). The revision of each run is recorded in the results file.
