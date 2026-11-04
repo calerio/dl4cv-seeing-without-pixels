@@ -49,16 +49,22 @@ the more direct evidence.
 | B' - C | physical | +1.38 | +0.11 to +2.50 |
 | C - A | overall | +0.11 | -0.57 to +0.74 |
 
-## Against the rule fixed on 18 Oct (D3), before seeds 1 and 2 were seen
+## Against the rule written on 18 Oct (D3)
+The rule was written after seeds 1 and 2 of A and B' had finished on the cluster, but before their results were
+read, and knowing seed 0's test result (D3).
 - Procedural gain: interval of B' - A above zero (+2.37 to +4.83), and B' beats A in seed 1 (36.44 vs 33.61) and in
   seed 2 (37.20 vs 33.19). Met.
-- More than the verb rule: B' - C on procedural above zero (+2.32 to +4.74). Met.
+- More than the verb rule: B' - C on procedural above zero (+2.32 to +4.74), and B' beats C in seed 1 (36.44 vs
+  33.57) and in seed 2 (37.20 vs 33.16). Met.
 - No cost on physical activities: lower end of B' - A on physical above -1 (+0.31). Met.
 
 ## Limits
 - The go decision for seeds 1 and 2 rested on seed 0's test result and on a post-hoc reading of one gate criterion
   (D3). Seeds 1 and 2, trained after that decision, each show the gain on their own.
+- The design itself followed test results: the move from run B (grouping, no loss term) to B' came after B scored
+  44.84 on the test (D3).
 - B' changes two things together: batches grouped by take, and the within-take loss. The loss needs the grouping to
   have same-take pairs to work on. Grouping without the loss gave no gain in an earlier, unseeded run (16 Oct), which
-  is supporting evidence only.
+  is supporting evidence only: that run also used a different mask and no seed. Setup G (`docs/followups.md`)
+  tests grouping without the loss directly.
 - Seeds vary training only; all runs share one test set of 7,079 questions from 671 takes.
