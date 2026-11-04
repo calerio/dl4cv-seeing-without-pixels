@@ -9,10 +9,13 @@ Each one is meant to be cited in the report.
 gives one pose per video frame at the video's own rate, and about a third of the DynPose-100K videos are 24 or 25
 FPS (`src/camformer/dynpose_fps.py`: the rate follows from the number of ViPE poses and the length of the
 dataset's own 12 FPS frame sequence; the estimates fall into tight groups). Table
-`src/camformer/data_files/dynpose100k_fps/vipe_fps_v1.csv.gz` (job 737912, code as in this decision's PR; sha256 of
-the uncompressed CSV `4c5070d64c2be20ce3bc90a5369f96e80876417eb67b9b4bb6be4c3d468435f7`): 99,501 clips, 65,309 at 30 FPS, 17,680 at
-25, 16,443 at 24 and 46 at 15; 4,642 lie between the groups and are assigned by the rule in `dynpose_fps.py`, and 23
-lie outside every group and keep their own estimate (both marked `ambiguous`). In E->X, U0 and U1
+`src/camformer/data_files/dynpose100k_fps/vipe_fps_v1.csv.gz` (job 737943, code as in this decision's PR; sha256 of
+the uncompressed CSV `1f9cb977e60166c8f05876392f54497a5fb6f55a67578d5a965d99a3e18c13e0`): 99,501 clips, 64,866 at 30
+FPS, 18,123 at 25, 16,443 at 24 and 46 at 15, and 23 that fit no standard rate and keep their own estimate. 4,778
+(4.8%) are marked `ambiguous`: estimates between the groups (between 25 and 30, 1,456 assigned 25 and 60 assigned 30
+by each clip's rounding margin; above 30.5, 30) and the 23 outside every group. An earlier build (job 737912) sent
+every estimate from 27.5 to 29.5 to 30 FPS; review found that this contradicts the rounding bound, and the rule was
+changed before any run used the table. In E->X, U0 and U1
 those clips therefore entered at 16 to 17 poses per second instead of 20. Training and test handled them the same
 way, so nothing was mis-scored, but D4's statement was false for those clips and the joint models saw two
 different pose rates for exo data.
