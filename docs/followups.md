@@ -22,14 +22,24 @@ experiment 1 (common flags in the results file), seeds 0, 1, 2, 20 epochs, last 
 plus G's per-seed rows in the per-seed table.
 
 **Rule, fixed now.**
-- "The within-take loss is needed for the gain": interval of B' - G on procedural above zero, and B' above G in
-  each seed.
-- "Grouping alone helps": interval of G - C on procedural above zero. If it includes zero, we write that no gain
-  from grouping alone was detected, not that grouping has no effect.
+- "The within-take loss adds to grouping": interval of B' - G on procedural above zero, and B' above G in each seed.
+  This says the loss adds something on top of grouping, not that grouping contributes nothing; the share of the
+  B' - C gain each part carries is read from both comparisons together.
+- "Grouping alone helps": interval of G - C on procedural above zero, and G above C in each seed (the same bar as
+  B' - G). Otherwise we write that no gain from grouping alone was detected, not that grouping has no effect.
 
-**Comparability.** A, C and B' were trained on code a8fc1ec / bb5dc84; G runs on current `main`. Every change since
-then sits behind a flag that is off here, and the regression check (`check_reproduction.sh`, 44.81 / 33.61) is run
-on the deployed revision before G is queued. The revision of each run is recorded in the results file.
+(Amended 4 Nov, after review and before any G result was computed: the first rule was worded "the loss is needed
+for the gain", which B' - G alone cannot show, and the second had no per-seed condition.)
+
+**Comparability.** A, C and B' were trained on code a8fc1ec / bb5dc84; G was trained on 3d394e7. Since bb5dc84 the
+training code changed in ways meant to be inert with the experiment-1 flags (the clip loader was refactored, the
+encoder now always receives domain ids and gravity flags, the within-take block moved under a check for exo
+batches), but reading the code is not a measurement, and `check_reproduction.sh` only tests the released model, not
+training. So `scripts/slurm/check_training_equivalence.sh` trains one epoch of B' (seed 0; it uses every code path
+G uses) once on bb5dc84 and twice on the current code, on one node, and compares the weights. Rule, fixed before it
+runs: old and new code are equivalent if they differ by at most twice the difference between the two current-code
+runs (GPU nondeterminism). If the check fails, B' - G and G - C are reported as descriptive only, confounded with the
+code revision. The revision of each run is recorded in the results file.
 
 ## 2. Nymeria zero-shot
 
@@ -43,9 +53,11 @@ with the released 8-second model scored the same way, never with the paper's num
 are scored once so that the size of this gap is on record.
 
 **Path.** The authors' own test (`train.py --dataset nymeria_pretrain --test --text_column a..d`), run by
-`scripts/slurm/eval_nymeria.sh`; `score_nymeria.py` writes one row per question, with the recording as the
-resampling unit (every question's five options come from one recording). Recordings per narration type: 130 body
-posture, 192 hands/arms, 167 legs/feet, only 7 focus of attention; 198 pooled. No test row has an empty trajectory,
+`scripts/slurm/eval_nymeria.sh`; `score_nymeria.py` writes one row per question. Every question's five options come
+from one recording (130 body posture, 192 hands/arms, 167 legs/feet, 7 focus of attention; 198 pooled), but
+recordings of one person in one session are not independent, and one session gives 1,132 of the 4,000 questions
+(805 of the 1,000 focus questions). The resampling unit is therefore the session: 53 / 61 / 58 / 4 per type, 61
+pooled. No test row has an empty trajectory,
 so the dataset's fallback to the next row never fires (checked 3 Nov on the cluster). Our runs are loaded as
 Lightning checkpoints (`--ckpt`), the released models with `--init_ckpt`; the feasibility job 736059 showed both
 paths load and that the released 16 s model gives the paper's 36.30 on body posture. Runs with gaze or the
@@ -61,9 +73,12 @@ domain token are refused, because this path feeds neither, so experiment 2 and 3
 | Released 8 s | | | | | |
 | A, C, B', G (mean of 3 seeds, per-seed range) | | | | | |
 
-and `compare_runs.py` intervals for B' - A and G - A (pooled and per type).
+and `compare_runs.py` intervals for B' - A and G - A (pooled, and per type except focus of attention).
 
 **Rule, fixed now.** These are secondary, descriptive results. We say B' transfers better (or worse) than A only
 if the pooled B' - A interval excludes zero; per-type differences are reported without a claim, since four types
-on 1,000 questions each are four chances for a chance finding. Focus of attention gets no interval: 7 recordings
-are too few clusters for a bootstrap.
+on 1,000 questions each are four chances for a chance finding. Focus of attention gets no interval: 4 sessions are
+too few clusters for a bootstrap (`compare_runs.py` prints none below 20 clusters).
+
+(Amended 4 Nov, after review: the resampling unit was the recording. The per-model accuracies of job 736108 were in
+its log at that point; no comparison between models had been computed.)

@@ -15,7 +15,9 @@
 # Usage, from ~/dl4cv/camformer:
 #   sbatch ~/dl4cv/eval_nymeria.sh run <job_name>      # last checkpoint of one of our experiment-1 runs
 #   sbatch ~/dl4cv/eval_nymeria.sh released <name>     # checkpoints/<name>.pt, e.g. egoexo4d_dur8
-# Only runs with the authors' architecture (experiment 1) are accepted: this path feeds no gaze or domain token.
+# Only finished runs with the authors' architecture (experiment 1) are accepted: this path feeds no gaze or domain
+# token, and builds the model from train.py's defaults. The Nymeria loader reads the pose encoding and sample rate
+# from the flags, not the clip duration (`--take_duration`, `--sample_dur` set Ego-Exo4D training windows only).
 
 module load sw/miniconda3
 eval "$(conda shell.bash hook)"
@@ -27,21 +29,27 @@ export DYNPOSE_DATA_DIR="$CAMFORMER_DATA"
 export NYMERIA_DATA_DIR="$CAMFORMER_DATA"
 export TMPDIR=~/tmp
 
-set -eo pipefail
-kind=$1 name=$2
+set -euo pipefail
+kind=${1:-} name=${2:-}
+[ -n "$kind" ] && [ -n "$name" ] || { echo "usage: eval_nymeria.sh run|released <name>"; exit 1; }
 case $kind in
   run)
     out=~/data/logs/egoexo4d_pretrain_longseq/$name
-    python - "$out/args.json" <<'PY'
+    python - "$out/args.json" "$out/checkpoints/last.ckpt" <<'PY'
 import json, sys
+import torch
 a = json.load(open(sys.argv[1]))
-# Only experiment-1 runs: the authors' model with default architecture flags.
-odd = {k: a.get(k) for k in ('gaze_input', 'domain_token', 'freeze_encoder', 'use_learnable_gravity',
-                             'use_scenario_label', 'hier_text') if a.get(k)}
-if a.get('gaze', 'none') != 'none':
-  odd['gaze'] = a['gaze']
+# The values the Nymeria test below builds the model with (train.py defaults, plus --pose_encoding rel9d_grav).
+expected = {'d_model': 128, 'nhead': 4, 'num_layers': 4, 'dim_feedforward': 256,
+            'pose_encoding': 'rel9d_grav', 'sample_rate': 1, 'gaze': 'none'}
+odd = {k: a.get(k) for k in expected if a.get(k, expected[k]) != expected[k]}
+odd.update({k: a[k] for k in ('gaze_input', 'domain_token', 'freeze_encoder', 'use_learnable_gravity',
+                              'use_scenario_label', 'hier_text') if a.get(k)})
 if odd:
-  sys.exit(f'{sys.argv[1]}: run trained with {odd}; the Nymeria path does not feed these')
+  sys.exit(f'{sys.argv[1]}: run trained with {odd}; the Nymeria test would score a different model')
+epoch = torch.load(sys.argv[2], map_location='cpu', weights_only=False)['epoch']
+if epoch + 1 != a['epochs']:
+  sys.exit(f'{sys.argv[2]}: checkpoint of epoch {epoch + 1} of {a["epochs"]}; training has not finished')
 PY
     mkdir -p ~/dl4cv/run_ckpts
     ckpt=~/dl4cv/run_ckpts/$name.ckpt

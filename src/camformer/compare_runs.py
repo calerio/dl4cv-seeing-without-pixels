@@ -1,13 +1,17 @@
-"""Paired comparison of two training setups on the Ego-Exo4D 5-way MCQ test.
+"""Paired comparison of two training setups on a 5-way MCQ test (Ego-Exo4D, DynPose-100K or Nymeria).
 
 Usage:
     python compare_runs.py --a A_s0.csv [A_s1.csv ...] --b B_s0.csv [B_s1.csv ...] [--metric m2t]
 
-Each CSV is the per-question output of score_mcq.py --out, one per training seed. For each split (all,
-physical, procedural, and type x view) the script prints each setup's accuracy (mean over its seeds) and
+Each CSV is the per-question output of a scorer, one per training seed: score_mcq.py (Ego-Exo4D; `take` is the
+take, `type` physical/procedural, `view` in-view/out-of-view), score_exo_mcq.py (DynPose; `take` is the video, no
+type or view) or score_nymeria.py (`take` is the recording session, `type` the narration type a-d). For each split
+(all, each type, and type x view) the script prints each setup's accuracy (mean over its seeds) and
 per-seed spread, the difference B - A, and a 95% interval from a paired two-level bootstrap: each resample
 draws the seeds of each setup with replacement, then the test takes with replacement. Takes, not questions,
-are resampled because all five options of a question, and many questions, come from the same take.
+are resampled because all five options of a question, and many questions, come from the same take. A split with
+fewer than --min_takes takes gets no interval ("-"): a percentile bootstrap over a handful of clusters looks
+precise and is not.
 
 What the interval covers: test-take sampling, and training-seed variation only as far as the seeds given
 can show it. With one seed per setup it covers test sampling alone and says nothing about whether the
@@ -78,6 +82,7 @@ def main():
   parser.add_argument('--metric', default='m2t', choices=['m2t', 't2m'])
   parser.add_argument('--n_boot', type=int, default=10000)
   parser.add_argument('--seed', type=int, default=0)
+  parser.add_argument('--min_takes', type=int, default=20, help='no interval for splits with fewer takes')
   opts = parser.parse_args()
 
   qa, sa = load(opts.a, opts.metric)
@@ -91,7 +96,7 @@ def main():
   splits = [('all', 'all', np.ones(len(qa), bool))]
   for t in sorted(set(qa['type']) - {'all'}):
     splits.append((t, 'all', (qa['type'] == t).to_numpy()))
-    for v in sorted(set(qa['view']) - {'all'}):  # Nymeria and DynPose files have view 'all' only
+    for v in sorted(set(qa['view']) - {'all'}):  # Nymeria files have view 'all' only
       splits.append((t, v, ((qa['type'] == t) & (qa['view'] == v)).to_numpy()))
 
   print(f'metric {opts.metric} | A: {len(opts.a)} seed(s) | B: {len(opts.b)} seed(s) | '
@@ -104,6 +109,8 @@ def main():
   rows = []
   for t, v, m in splits:
     lo, hi = two_level_bootstrap(qa['take'][m].to_numpy(), sa[:, m], sb[:, m], opts.n_boot, rng)
+    if qa['take'][m].nunique() < opts.min_takes:
+      lo = hi = float('nan')
     row = {'type': t, 'view': v, 'n': int(m.sum()), 'takes': qa['take'][m].nunique(),
            'A': 100 * a[m].mean(), 'A_seeds': seed_range(sa[:, m]),
            'B': 100 * b[m].mean(), 'B_seeds': seed_range(sb[:, m]),
@@ -112,7 +119,7 @@ def main():
       p, b_only, a_only = mcnemar_exact(sa[0][m], sb[0][m])
       row.update(A_only=a_only, B_only=b_only, mcnemar_p=p)
     rows.append(row)
-  print(pd.DataFrame(rows).to_string(index=False, float_format='%.2f'))
+  print(pd.DataFrame(rows).to_string(index=False, float_format='%.2f', na_rep='-'))
 
 
 if __name__ == '__main__':

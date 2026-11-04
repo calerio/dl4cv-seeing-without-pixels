@@ -9,9 +9,11 @@ Each one is meant to be cited in the report.
 Nymeria zero-shot results, which the paper reports for its 16-second checkpoint while all our runs start from the
 8-second one.
 
-**Decision.** Train G (grouping and verb mask, no loss term; seeds 0-2) on current code after the regression check,
-and score experiment-1 models on Nymeria through the authors' test path, compared only with the released 8-second
-model scored the same way; the 16-second model is scored once to show the gap. Experiment 2 and 3 models are not
+**Decision.** Train G (grouping and verb mask, no loss term; seeds 0-2) on current code, and check separately that
+the current code trains like the revision B' and C were trained on (`check_training_equivalence.sh`; the regression
+check covers only the released model). Score experiment-1 models on Nymeria through the authors' test path,
+resampling recording sessions, compared only with the released 8-second model scored the same way; the 16-second
+model is scored once to show the gap. Experiment 2 and 3 models are not
 scored on Nymeria (that path feeds neither the domain token nor gaze). Design, tables and rules in
 [`followups.md`](followups.md).
 

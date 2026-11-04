@@ -6,13 +6,18 @@ Usage:
 <column> is the narration type (a body posture, b hands/arms, c legs/feet, d focus of attention), as given to
 `train.py --dataset nymeria_pretrain --test --text_column <column>`. <feature_dir> holds the frames.pt and
 text.pt that run wrote, in the row order of data_files/nymeria/eval1000/split_by_<narration>.csv (groups of 5
-rows; the first row of each group is the answer). The answer's recording (motion_file) takes the place of the
-take, so compare_runs.py resamples recordings; the narration type goes in the `type` column.
+rows; the first row of each group is the answer). The narration type goes in the `type` column.
+
+Resampling unit: recordings of one person in one session are not independent (one session,
+20230801_s0_aimee_davis, gives 1,132 of the 4,000 questions), so the `take` column holds the session (the
+recording name without its `_act<N>_<id>.npz` ending) and compare_runs.py resamples sessions: 61 pooled, 53 / 61 /
+58 / 4 per narration type. The recording itself is kept in the `recording` column.
 """
 
 import argparse
 import os
 
+import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
@@ -29,14 +34,17 @@ def per_question(column, feature_dir, group_size=5):
     raise ValueError(f'{len(frames)} features but {len(df)} test rows')
   n = len(df) // group_size
   answers = df.iloc[::group_size].reset_index(drop=True)
-  if not answers['gt'].astype(bool).all():
-    raise ValueError('the first row of some group is not the answer')
+  if not ((df['gt'].astype(str) == 'True').to_numpy() == (np.arange(len(df)) % group_size == 0)).all():
+    raise ValueError('the answer is not exactly the first row of each group')
   if (df.groupby(df.index // group_size)['motion_file'].nunique() != 1).any():
     raise ValueError('some question mixes recordings')
+  if not df['motion_file'].str.contains(r'_act\d+_[^_/]+\.npz$').all():
+    raise ValueError('a recording name does not end in _act<N>_<id>.npz; the session cannot be read from it')
   sim = torch.einsum('gid,gjd->gij', frames.view(n, group_size, -1), texts.view(n, group_size, -1))
   return pd.DataFrame({
       'question': [f'{column}{i}' for i in range(n)],
-      'take': answers['motion_file'],
+      'take': answers['motion_file'].str.replace(r'_act\d+_[^_/]+\.npz$', '', regex=True),
+      'recording': answers['motion_file'],
       'type': column,
       'view': 'all',
       'm2t': (sim[:, 0, :].argmax(-1) == 0).numpy(),
