@@ -105,6 +105,14 @@ def within_take_loss(motion_features, text_features, takes, keys, temperature=0.
   return loss, int(rows.sum())
 
 
+def check_no_dropped_layers(unexpected_keys, init_ckpt, hint):
+  """A trained domain token or gaze layer would be silently thrown away, so the model would be scored without the
+  part it was trained with: fail instead of warning."""
+  dropped = [k for k in unexpected_keys if k.startswith(('domain_embed.', 'gaze_proj.'))]
+  if dropped:
+    raise RuntimeError(f"init_ckpt '{init_ckpt}' has trained weights this model does not use ({dropped[:2]}): {hint}")
+
+
 class CLIPLoss(nn.Module):
   """Symmetric InfoNCE over matched (motion, text) pairs in a batch."""
 
@@ -194,14 +202,10 @@ class CameraPoseTextPretraining(pl.LightningModule):
         else:
           new_state_dict[k] = v
       result = self.model.load_state_dict(new_state_dict, strict=False)
-      dropped = [k for k in result.unexpected_keys if k.startswith(('domain_embed.', 'gaze_proj.'))]
-      if dropped:
-        # A trained domain token or gaze layer would be silently thrown away: the model would be scored without
-        # the part it was trained with. Fail instead of warning.
-        raise RuntimeError(
-            f"init_ckpt '{args.init_ckpt}' has trained weights this model does not use ({dropped[:2]}): pass the"
-            ' flags the run was trained with (--domain_token / --gaze, --gaze_input; see the run\'s args.json)'
-        )
+      check_no_dropped_layers(
+          result.unexpected_keys, args.init_ckpt,
+          'this task has no domain token or gaze input; test such a model through the long-sequence task with the'
+          " flags in its args.json (eval_run.sh, eval_ego_exo.sh)")
       if result.unexpected_keys:
         print(
             f'[init_ckpt] ignored {len(result.unexpected_keys)} non-encoder'
