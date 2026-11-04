@@ -40,7 +40,7 @@ of the time (60.2% and 60.4% after the two runs). There is room to learn, and th
 
 **Decision.** We keep fine-tuning the released checkpoint at the authors' learning rate, as the course
 recommends for a model that is already near an optimum (Lecture 7, transfer learning). Retraining from scratch
-would not change the dilution and would cost about 80 GPU-hours. Instead we add a second loss term
+would not change the dilution and would cost about 70 GPU-hours (D1). Instead we add a second loss term
 (`--within_take_weight`, weight 1): each clip must pick its own caption among the clips of its own take that
 have a different verb, which is close to the format of the test. The authors' loss is kept unchanged next to it.
 
@@ -110,7 +110,8 @@ checkpoint and finished the run.
 
 ## D1. Training runs are split into chained 24-hour jobs (15 Oct 2026)
 
-**Situation.** The authors trained on 8 GPUs for 500 epochs (the defaults in `train.py`). We have one
+**Situation.** The authors trained on 8 GPUs (supp. 2.3); `train.py` defaults to 500 epochs, and the released 8-second
+checkpoint is from epoch 498 (its `source_ckpt` field). The paper gives no epoch count. We have one
 student account on the Bocconi cluster: at most 2 GPUs, 2 running jobs and 24 hours per job. On one
 A100, one Ego-Exo4D epoch takes about 8 minutes: under 6 minutes of training and about 2.5 minutes
 for the validation pass that runs after every epoch (timing run, 15 Oct). The full 500-epoch schedule
