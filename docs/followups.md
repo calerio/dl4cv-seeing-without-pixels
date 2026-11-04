@@ -39,7 +39,13 @@ training. So `scripts/slurm/check_training_equivalence.sh` trains one epoch of B
 G uses) once on bb5dc84 and twice on the current code, on one node, and compares the weights. Rule, fixed before it
 runs: old and new code are equivalent if they differ by at most twice the difference between the two current-code
 runs (GPU nondeterminism). If the check fails, B' - G and G - C are reported as descriptive only, confounded with the
-code revision. The revision of each run is recorded in the results file.
+code revision.
+
+(Amended 4 Nov, after the first check, job 737585, passed: 0.000162 between old and new code against 0.0002 between
+two runs of the new code. Reviewers pointed out that it had no positive control: if GPU noise alone is as large as a
+real change, any code would pass. The check now adds a run of the current code with seed 1, a change known to
+matter, and counts only if that run differs at least 5 times more than the GPU noise; otherwise it is reported as
+uninformative and B' - G and G - C as descriptive. It is rerun in full under a new tag.) The revision of each run is recorded in the results file.
 
 ## 2. Nymeria zero-shot
 
@@ -73,12 +79,15 @@ domain token are refused, because this path feeds neither, so experiment 2 and 3
 | Released 8 s | | | | | |
 | A, C, B', G (mean of 3 seeds, per-seed range) | | | | | |
 
-and `compare_runs.py` intervals for B' - A and G - A (pooled, and per type except focus of attention).
+and `compare_runs.py` intervals for B' - A and G - A on the three types with enough sessions (see the rule).
 
-**Rule, fixed now.** These are secondary, descriptive results. We say B' transfers better (or worse) than A only
-if the pooled B' - A interval excludes zero; per-type differences are reported without a claim, since four types
-on 1,000 questions each are four chances for a chance finding. Focus of attention gets no interval: 4 sessions are
-too few clusters for a bootstrap (`compare_runs.py` prints none below 20 clusters).
+**Rule.** Descriptive only: no claim is made from Nymeria. We report each model's accuracy per narration type and
+pooled, with per-seed ranges, and `compare_runs.py` intervals for B' - A and G - A on body posture, hands/arms and
+legs/feet only. No interval for focus of attention (4 sessions) or for the pooled number: one session gives 1,132 of
+the 4,000 questions, so the pooled effective number of clusters is about 11 (Kish), below the floor of 20 that
+`compare_runs.py` applies to session counts.
 
-(Amended 4 Nov, after review: the resampling unit was the recording. The per-model accuracies of job 736108 were in
-its log at that point; no comparison between models had been computed.)
+(Amended twice on 4 Nov, after review. First, the resampling unit changed from the recording to the session. Second,
+the earlier rule allowed a claim from the pooled B' - A interval; it now allows none, because that interval rests on
+about 11 effective clusters. The per-model accuracies of job 736108 were in its log at both points; no comparison
+between models had been computed, and both amendments remove claims rather than add them.)
