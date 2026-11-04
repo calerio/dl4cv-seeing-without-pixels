@@ -42,6 +42,8 @@ out = [f"--pose_encoding {a['pose_encoding']}", f"--pose_source {a.get('pose_sou
 for k in ('sample_dur', 'domain_token', 'exo_to_aria_axes'):
   if a.get(k):
     out.append(f'--{k}')
+if a.get('exo_fps_table'):
+  out.append(f"--exo_fps_table {a['exo_fps_table']}")
 print(' '.join(out))
 PY
 )

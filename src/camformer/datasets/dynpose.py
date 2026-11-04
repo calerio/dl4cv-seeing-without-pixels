@@ -32,8 +32,9 @@ from scipy.spatial.transform import Rotation, Slerp
 import torch
 from utils.dataset_utils import matrix_to_pose7d, transform_camera_pose, w2c_to_c2w
 
-# Frame rate of the stored poses (supp. 2.2): ViPE gives one pose per video frame at 30 FPS; the dataset's
-# own poses are at 12 FPS.
+# Frame rate of the stored poses as supp. 2.2 states it: ViPE at 30 FPS, the dataset's own poses at 12 FPS. ViPE
+# gives one pose per video frame, and about a third of the videos are 24 or 25 FPS, not 30 (dynpose_fps.py), so
+# --exo_fps_table gives the per-clip rate; without it every ViPE clip is taken as 30 FPS (experiment 2, first runs).
 NATIVE_FPS = {'vipe': 30.0, 'original': 12.0}
 # OpenCV camera axes (x right, y down, z forward) to the ego camera frame as stored in the Ego-Exo4D
 # trajectories: x down, y left, z forward. Measured with exo_checks.py (the ego camera x axis has a mean
@@ -103,6 +104,15 @@ class DynPoseCamTextPair(torch.utils.data.Dataset):
     self.longseq = args is not None and getattr(args, 'exo_longseq', False)
     self.resample_hz = 0.0 if args is None else getattr(args, 'exo_resample_hz', 0.0)
     self.to_aria_axes = args is not None and getattr(args, 'exo_to_aria_axes', False)
+    # Per-clip native rate of the ViPE poses (uid -> FPS), used when resampling; None = 30 FPS for every clip.
+    fps_table = '' if args is None else getattr(args, 'exo_fps_table', '')
+    self.fps_table = None
+    if fps_table:
+      assert self.pose_source == 'vipe', '--exo_fps_table holds ViPE frame rates'
+      if not os.path.isabs(fps_table):  # relative to our data_files/ (not the upstream dynpose100k/ link)
+        fps_table = os.path.join(os.path.dirname(_PKG_DATA_FILES_DIR), fps_table)
+      t = pd.read_csv(fps_table)
+      self.fps_table = dict(zip(t['uid'], t['fps']))
     # Test split: the 5-way test (default) or the validation clips that are not in the test (for choices
     # that must not be made on the test).
     self.eval_split = 'test' if args is None else getattr(args, 'exo_eval_split', 'test')
@@ -117,7 +127,7 @@ class DynPoseCamTextPair(torch.utils.data.Dataset):
         f'DynPose: encode_pose={self.encode_pose},'
         f' sample_rate={self.sample_rate}, pose_source={self.pose_source},'
         f' longseq={self.longseq}, resample_hz={self.resample_hz},'
-        f' to_aria_axes={self.to_aria_axes}'
+        f' to_aria_axes={self.to_aria_axes}, fps_table={fps_table or "none (30 FPS)"}'
     )
     self.build_dataset()
 
@@ -158,10 +168,15 @@ class DynPoseCamTextPair(torch.utils.data.Dataset):
       bottom = np.tile([[[0, 0, 0, 1.0]]], (len(poses), 1, 1))
       poses = np.concatenate([poses[:, :3, :], bottom], axis=1) @ _OPENCV_TO_ARIA  # camera-to-world
     poses = matrix_to_pose7d(poses)
-    if self.resample_hz > 0:
-      poses = resample_poses(poses, NATIVE_FPS[self.pose_source], self.resample_hz)
-    poses = poses[:: self.sample_rate]
     row = self.df.iloc[idx]
+    if self.resample_hz > 0:
+      src_hz = NATIVE_FPS[self.pose_source]
+      if self.fps_table is not None:
+        src_hz = float(self.fps_table[row['uid']])  # a clip missing from the table fails here, loudly
+        if not np.isfinite(src_hz):
+          raise ValueError(f"{row['uid']}: no native frame rate in the table")
+      poses = resample_poses(poses, src_hz, self.resample_hz)
+    poses = poses[:: self.sample_rate]
     caption = row['description_text'][: self.approx_max_chars]
     if not self.longseq:
       poses = transform_camera_pose(poses, self.encode_pose)

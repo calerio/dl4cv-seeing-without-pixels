@@ -1,11 +1,16 @@
 """Unit checks for the experiment-2 code, on synthetic data (CPU, seconds). Run: python test_ego_exo.py"""
 
+import argparse
+import os
 import random
+import tempfile
 
 import numpy as np
+import pandas as pd
 from scipy.spatial.transform import Rotation
 import torch
 
+import datasets.dynpose as dynpose
 from datasets.dynpose import _OPENCV_TO_ARIA, resample_poses
 from loader import DomainBatchSampler, domain_ids
 from models.cm_encoder import CameraPoseSeqEncoder
@@ -61,6 +66,34 @@ def test_resample():
   for n in range(2, 300):
     p = np.concatenate([np.zeros((n, 3)), Rotation.identity(n).as_quat()], 1)
     resample_poses(p, 30.0, 20.0)
+
+
+def test_fps_table():
+  # Two 2-second ViPE clips, one filmed at 24 FPS and one at 30 FPS. Resampled to 20 Hz they must both give 2 s of
+  # poses (41); without the table both are taken as 30 FPS, so the 24 FPS clip comes out 20% short.
+  with tempfile.TemporaryDirectory() as d:
+    rows = []
+    for uid, fps in (('a', 24), ('b', 30)):
+      n = 2 * fps + 1
+      poses = np.tile(np.eye(4), (n, 1, 1))
+      poses[:, 0, 3] = np.arange(n) / fps
+      np.savez(os.path.join(d, f'{uid}.npz'), data=poses, inds=np.arange(n))
+      rows.append(dict(video_uid=uid, uid=uid, segment_id=0, pose_path='', vipe_pose_path=f'{uid}.npz',
+                       description_text='x', pose_scale=1.0, vipe_pose_scale=1.0))
+    pd.DataFrame(rows).to_csv(os.path.join(d, 'meta.csv'), index=False)
+    pd.DataFrame(dict(uid=['a', 'b'], fps=[24.0, 30.0])).to_csv(os.path.join(d, 'fps.csv'), index=False)
+    saved = dynpose._resolve_csv, dynpose._DEFAULT_DATA_DIR
+    dynpose._resolve_csv, dynpose._DEFAULT_DATA_DIR = (lambda fn: os.path.join(d, 'meta.csv')), d
+    try:
+      def lengths(table):
+        args = argparse.Namespace(encode_pose=2, sample_rate=1, pose_source='vipe', exo_resample_hz=20.0,
+                                  exo_to_aria_axes=False, exo_fps_table=table)
+        ds = dynpose.DynPoseCamTextPair(args, 'train')
+        return [len(ds[i][0]) for i in range(len(ds))]
+      assert lengths(os.path.join(d, 'fps.csv')) == [41, 41]
+      assert lengths('') == [33, 41]
+    finally:
+      dynpose._resolve_csv, dynpose._DEFAULT_DATA_DIR = saved
 
 
 def test_axes():

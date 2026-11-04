@@ -96,6 +96,14 @@ def get_args():
       help='Resample exo poses to this rate before encoding (0 = native rate).',
   )
   parser.add_argument(
+      '--exo_fps_table',
+      type=str,
+      default='',
+      help='Per-clip native frame rate of the ViPE poses, a CSV made by dynpose_fps.py (path relative to'
+      ' data_files/, e.g. dynpose100k_fps/vipe_fps_v1.csv.gz), used by --exo_resample_hz. Default: every clip'
+      ' taken as 30 FPS.',
+  )
+  parser.add_argument(
       '--exo_to_aria_axes',
       action='store_true',
       help='Turn exo camera frames from OpenCV axes into the ego camera frame as stored (90 degrees about z).',
