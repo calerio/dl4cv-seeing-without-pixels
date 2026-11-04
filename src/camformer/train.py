@@ -261,6 +261,21 @@ def train(args):
   os.makedirs(log_dir, exist_ok=True)
   with open(os.path.join(log_dir, 'args.json'), 'w') as f:
     json.dump(vars(args), f, indent=4)
+  # A run continued across cluster jobs must not mix code revisions: the first start records the revision, and a
+  # resume on a different one is refused (scripts/deploy.sh writes REVISION).
+  if not args.test and os.path.exists('REVISION'):
+    revision = open('REVISION').read().strip()
+    start_file = os.path.join(log_dir, 'REVISION_AT_START')
+    resuming = args.resume and os.path.exists(os.path.join(log_dir, 'checkpoints', 'last.ckpt'))
+    if os.path.exists(start_file):
+      started = open(start_file).read().strip()
+      if resuming and started != revision:
+        raise SystemExit(f'refusing to resume {log_dir} on code revision {revision}: it started on {started}')
+    elif resuming:
+      print(f'[resume] {log_dir} has no recorded start revision; resuming on {revision}')
+    else:
+      with open(start_file, 'w') as f:
+        f.write(revision + '\n')
 
   if args.same_take_k > 0 and args.num_gpus > 1:
     raise ValueError('--same_take_k supports one GPU only')
