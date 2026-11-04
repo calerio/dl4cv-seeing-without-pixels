@@ -19,6 +19,7 @@ regression check. S-ego and S-exo do not resample and are rerun only so that eve
 revision. The reporting rule in `docs/ego_exo.md`, fixed before the first runs, applies unchanged. The rerun follows
 from the bug, not from the results; the first version's results were known when it was decided. They stay in
 `results/ego_exo.md` as version 1, and version 2 replaces them as the experiment's result whatever it shows.
+
 ## D5. Follow-ups: a grouping-only setup, and Nymeria scored against the 8-second model (3 Nov 2026)
 
 **Situation.** Experiment 1's gain mixes two changes (grouping by take, within-take loss), and the README promises
