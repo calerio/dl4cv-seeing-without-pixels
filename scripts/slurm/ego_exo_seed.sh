@@ -13,6 +13,7 @@ seeds=$1
 variant=${2:-v1}
 n_seeds=$(echo $seeds | wc -w)
 [ "$n_seeds" -ge 1 ] && [ "$n_seeds" -le 2 ] || { echo "one or two seeds per call" >&2; exit 1; }
+[ "$(echo $seeds | tr ' ' '\n' | sort -u | wc -l)" -eq "$n_seeds" ] || { echo "duplicate seed" >&2; exit 1; }
 [ "$variant" = v1 ] || [ "$variant" = v2 ] || { echo "variant must be v1 or v2" >&2; exit 1; }
 cd ~/dl4cv/camformer
 mkdir -p out err

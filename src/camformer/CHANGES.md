@@ -22,7 +22,7 @@ Almost all of it is additions (about 690 lines added, 37 changed or removed).
 | `datasets/egoexo4d_pretrain.py` | the input window as frame indices (same random draws as theirs), so gaze can be read for exactly those frames | `--gaze` | exp. 3 |
 | `datasets/dynpose.py` | exo clips in the long-sequence format, resampled to 20 poses per second at each clip's own frame rate, turned into the ego camera axes | `--exo_resample_hz`, `--exo_fps_table`, `--exo_to_aria_axes`, `--exo_eval_split` | exp. 2 (D4, D6) |
 
-## Files we added: 15
+## Files we added: 15 code files and 3 data files
 | Purpose | Files |
 |---|---|
 | Scoring, one row per test question | `score_mcq.py` (Ego-Exo4D, by activity type and visibility), `score_exo_mcq.py` (DynPose), `score_nymeria.py`, `eval_full_retrieval.py` |
