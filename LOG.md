@@ -2,8 +2,37 @@
 
 What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 
+## Tue 3 Nov 2026
+- Merged the experiment 3 design, code and seed-0 results ([`docs/gaze.md`](docs/gaze.md),
+  [`results/gaze.md`](results/gaze.md)).
+- Designed two follow-ups to experiment 1 ([`docs/followups.md`](docs/followups.md), decision D5): setup G
+  (same-take batches and the verb mask, without the within-take loss), and zero-shot scoring on Nymeria. Trained G,
+  seeds 0-2, and scored the experiment 1 models and both released Ego-Exo4D checkpoints on Nymeria. No numbers
+  yet: they go into a results file first.
+
+**Next:** test G, check that the current code trains like the revision A, C and B' were trained on, and write the
+results file.
+
+## Thu 29 Oct 2026
+- Merged the experiment 2 results ([`results/ego_exo.md`](results/ego_exo.md)), the experiment 3 code and the
+  updated review guide ([`REVIEW.md`](REVIEW.md)).
+
+## Fri 23 Oct 2026
+- Experiment 3 seed-0 test results written up as single-seed, descriptive results: on procedural questions all four
+  comparisons have intervals that include zero ([`results/gaze.md`](results/gaze.md)).
+
+## Thu 22 Oct 2026
+- Experiment 3 pilot gate, on training data only (job 711962): GT is 0.60 points above G0 and 0.84 above GT-shuf,
+  below the 1.0 bar fixed in advance, so seeds 1 and 2 do not run. Seed 0 of all five runs then scored on the test
+  (job 713312).
+
+## Wed 21 Oct 2026
+- Loading a checkpoint now fails, instead of warning, when a trained gaze layer or domain token would be dropped;
+  the diagnostics read each run's own flags.
+
 ## Tue 20 Oct 2026
-- Experiment 2 finished: seeds 0-2 of S-ego, S-exo, E->X, U0 and U1 ([`results/ego_exo.md`](results/ego_exo.md)). Against the rule fixed in advance: the joint model matches the ego specialist within 1.5 points; on the exo test a match can neither be shown nor ruled out (against E->X, the clean test of sharing: -1.6, interval -4.5 to +1.1). The domain token adds nothing measurable. Training the ego model on exo data alone drops it to 32.2 on the ego test; the joint models do not show that drop.
+- Experiment 2 finished: seeds 0-2 of S-ego, S-exo, E->X, U0 and U1 ([`results/ego_exo.md`](results/ego_exo.md)). The rule fixed in advance for "one model matches both specialists" is not met: on the ego test the joint model is within 1.5 points of the ego specialist, but on the exo test a match can neither be shown nor ruled out. The domain token adds nothing measurable. Training the ego model on exo data alone drops it to 32.2 on the ego test; the joint models do not show that drop.
+- Experiment 3 prepared: gaze features, the shuffled-gaze donor map (job 709883) and the checks before training ([`results/gaze_checks.md`](results/gaze_checks.md)). The check fixed in advance that gaze and pose line up in time did not pass; the runs use the documented timestamps, and alignment is reported as an untested assumption. Seed 0 of all five runs started (jobs 710385-710386).
 
 **Next:** design note for experiment 3 (eye gaze).
 
@@ -16,7 +45,7 @@ What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 **Next:** read the seed-0 results and apply the pilot rule in `docs/ego_exo.md`.
 
 ## Sun 18 Oct 2026
-- Experiment 1 finished: seeds 0-2 of A, C and B'. B' beats A by 3.5 points on procedural questions, in each seed; all three claims of the rule fixed in D3 are met ([`results/hard_negatives.md`](results/hard_negatives.md)).
+- Experiment 1 finished: seeds 0-2 of A, C and B'. B' beats A on procedural questions in each seed (by 2.8 to 4.0 points; 3.55 on average over the seeds); all three claims of the rule fixed in D3 are met ([`results/hard_negatives.md`](results/hard_negatives.md)).
 - Recorded the pilot gate outcome and the rule for the final claim in D3.
 
 ## Sat 17 Oct 2026
@@ -40,9 +69,9 @@ What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 **Next:** score the pilot and apply the D3 rule.
 
 ## Thu 15 Oct 2026
-- Ran the released Ego-Exo4D checkpoint on the test set (one GPU, under three minutes): 44.81% motion-to-text and 47.18% text-to-motion, identical to the released features and the paper. Details in [`results/reproduction.md`](results/reproduction.md).
+- Ran the released Ego-Exo4D checkpoint on the test set (one GPU, under three minutes): 44.81% motion-to-text and 47.18% text-to-motion, identical to the released features; the motion-to-text figure matches the paper (which reports only that direction). Details in [`results/reproduction.md`](results/reproduction.md).
 - First row of the schedule done.
-- Timed training from scratch on one GPU: about 8 minutes per epoch (under 6 for training, 2.5 for validation), so the paper's 500 epochs would take about 70 hours.
+- Timed training from scratch on one GPU: about 8 minutes per epoch (under 6 for training, 2.5 for validation), so 500 epochs (the default in the authors' `train.py`; the paper gives no epoch count) would take about 70 hours.
 - Added our copy of the authors' code under [`src/camformer/`](src/camformer/), with one change: `--resume`, so a long run can continue across several 24-hour cluster jobs ([`scripts/submit_chain.sh`](scripts/submit_chain.sh)). Tested by splitting a run across two jobs. Reasoning and test in [`docs/decisions.md`](docs/decisions.md).
 - Brought the experiment schedule forward to October.
 
