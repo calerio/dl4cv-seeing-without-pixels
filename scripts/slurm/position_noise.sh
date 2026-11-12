@@ -10,11 +10,12 @@
 #SBATCH --error=err/%x_%j.err
 set -euo pipefail
 # From ~/dl4cv/camformer:
-# sbatch ../position_noise.sh smoke exp4_v1 0.01 0
-# After checking units, smoke, and fixing the design:
-# POSITION_UNITS_CONFIRMED=1 sbatch ../position_noise.sh train exp4_v1 0.01 0
-# POSITION_UNITS_CONFIRMED=1 sbatch ../position_noise.sh eval exp4_v1 0.01 0
-# Repeat train/eval for training seeds 1,2. Sigma is in RAW POSITION UNITS.
+# sbatch ../position_noise.sh smoke exp4_v1 0.005 0
+# After smoke checks pass:
+# POSITION_UNITS_CONFIRMED=1 sbatch ../position_noise.sh train exp4_v1 0.005 0
+# POSITION_UNITS_CONFIRMED=1 sbatch ../position_noise.sh eval exp4_v1 0.005 0
+# Repeat smoke/train/eval for training seeds 1,2.
+# Positions confirmed in metres. Training sigma 0.005 = 0.5 cm per coordinate.
 module load sw/miniconda3
 eval "$(conda shell.bash hook)"
 conda activate camformer
