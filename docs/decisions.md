@@ -10,25 +10,32 @@ robustness to simulated tracking errors, using existing Ego-Exo4D data.
 The architecture, captions, and rotations remain unchanged. Noise is
 added to raw positions before the existing relative-pose conversion.
 
-Proposed protocol, pending confirmation that position coordinates are
-in metres:
-- Training noise: independent zero-mean Gaussian noise with standard
-  deviation 0.01 metres per coordinate, applied to 50% of training examples.
-- Evaluation noise standard deviations: 0, 0.005, 0.01, 0.02, and 0.05 metres.
-- Compare clean fine-tuning against noise-augmented fine-tuning, starting
-  from the same released checkpoint with matching training settings.
-- Use training seeds 0, 1, and 2, and identical evaluation disturbances
-  for both models.
+Position coordinates were confirmed to be in metres on the HPC.
 
-These levels define a controlled sensitivity experiment; they are not
-claimed to represent measured tracking-error distributions. Confirm units,
-convert settings if necessary, and freeze the protocol before final test
-evaluation. Run reproduction and HPC smoke checks before full training.
+Fixed noise settings:
+- Training: independent zero-mean Gaussian noise with standard deviation
+  0.005 metres (0.5 cm) per coordinate, applied to 50% of training examples.
+- Rationale: reported median frame-to-frame displacements are approximately
+  0.9–3 cm. We choose 0.5 cm as a conservative experimental strength to
+  limit disruption of fine motion; it is not an empirically optimal value.
+- Evaluation standard deviations: 0, 0.005, 0.01, 0.02, and 0.05 metres.
+- Training seeds: 0, 1, and 2. Both models receive identical evaluation
+  disturbances, using evaluation noise seeds 0, 1, and 2.
 
-Report clean accuracy and accuracy at each noise level. Compare the
-augmentation benefit against matched clean fine-tuning. Comparisons with
-the paper's original benchmark must use clean inputs and the matching
-evaluation protocol; corrupted-input results are a separate experiment.
+Compare noise-augmented fine-tuning against ordinary clean fine-tuning
+with matching starting weights and training settings. Reuse extension 1's
+clean baseline only if those settings match.
+
+Use the benchmark's 4-second evaluation protocol, as identified in the
+team review. Run reproduction and HPC smoke checks before full training.
+
+Report clean accuracy and accuracy at every noise level. Compare gains
+against the matched clean baseline. Comparisons with the paper use clean
+inputs and the matching benchmark protocol; corrupted-input results are
+a separate experiment.
+
+These noise levels define controlled stress tests, not measured real-world
+tracking-error distributions. Settings are fixed before final test evaluation.
 
 ## D6. Experiment 2 is run again, with each exo clip's own frame rate (4 Nov 2026)
 
