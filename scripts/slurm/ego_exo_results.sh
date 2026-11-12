@@ -135,6 +135,6 @@ compare "ego t2m U1 - U0 (descriptive)" --metric t2m --a $(f ee2 U0 ego) --b $(f
 compare "exo t2m U1 - E->X (descriptive)" --metric t2m --a $(f ee2 EX exo) --b $(f ee2 U1 exo)
 # Version 2 - version 1 of the same setup (descriptive): what the frame-rate fix changed. S-ego and S-exo do not
 # resample, so their rows show how much a rerun moves without any change to their inputs.
-for x in Sexo EX U0 U1; do cmp "exo m2t $x: version 2 - version 1" --a $(f ee $x exo) --b $(f ee2 $x exo); done
-for x in Sego EX U0 U1; do cmp "ego m2t $x: version 2 - version 1" --a $(f ee $x ego) --b $(f ee2 $x ego); done
+for x in Sexo EX U0 U1; do compare "exo m2t $x: version 2 - version 1" --a $(f ee $x exo) --b $(f ee2 $x exo); done
+for x in Sego EX U0 U1; do compare "ego m2t $x: version 2 - version 1" --a $(f ee $x ego) --b $(f ee2 $x ego); done
 echo "ego_exo results done"
