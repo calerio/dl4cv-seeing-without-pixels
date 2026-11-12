@@ -20,7 +20,8 @@ extra seeds, spare time and writing. The original latest dates are in brackets.
 | [x] 18 Oct | Tue 20 Oct (1 Nov) | Same-take hard negatives, plus a retrained baseline for a fair comparison | Smallest code change, so it gives a first result early; the baseline is reused by every later experiment (in the end each experiment retrained its own baseline on its code revision) |
 | [x] 20 Oct | Wed 28 Oct (15 Nov) | Single ego+exo model, with and without the domain token | Main contribution and the most engineering (frame rates, axes, two training tasks); code is written while the hard-negative runs train |
 | [x] 22 Oct (seed 0 only: the pilot gate was not met) | Wed 4 Nov (18 Nov) | Eye gaze as a second input: frozen versus full fine-tuning | Depends on the gaze check; first to be cut if time runs short |
-| [ ] started 3 Nov | Wed 18 Nov | Extra seeds and any follow-up runs the results call for | Spare time if an experiment needs a second attempt |
+| [ ] started 3 Nov (follow-ups to experiment 1 and experiment 2 run again, D6, done 6 Nov; experiment 4 to run) | Wed 18 Nov | Extra seeds and any follow-up runs the results call for | Spare time if an experiment needs a second attempt |
+| [ ] | Wed 18 Nov | Experiment 4: position-noise robustness (`docs/position_noise.md`); noisy runs only, the clean baseline is experiment 1's A | Must finish before the no-new-runs date; nothing is queued until the noise level is recorded in `docs/decisions.md` |
 | [ ] | Sun 8 Nov | First drafts of the report sections, split across the team | Writing starts while experiments still run |
 | [ ] | Tue 24 Nov | No new runs from 18 Nov: tables, report and slides; slides ready Fri 20 Nov for a practice run | Leaves six days before the presentation |
 | [ ] | Fri 27 Nov | Poster ready | Four days before the poster session |
