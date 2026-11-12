@@ -22,6 +22,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 from tasks.pretrain import CameraPoseTextPretraining
 from tasks.pretrain_longseq import CameraPoseTextPretrainingLongSeq
+from utils.position_noise import validate_noise
 
 
 def get_args():
@@ -215,11 +216,23 @@ def get_args():
       help='Weight of auxiliary scenario classification loss.',
   )
 
-  # Experiment 4 (off by default). Units are those of the raw stored positions.
-  parser.add_argument('--position_noise_train_sigma', type=float, default=0.0)
-  parser.add_argument('--position_noise_probability', type=float, default=0.5)
-  parser.add_argument('--position_noise_eval_sigma', type=float, default=0.0)
-  parser.add_argument('--position_noise_eval_seed', type=int, default=0)
+  # Experiment 4, position noise (docs/position_noise.md, D7). Off by default.
+  parser.add_argument(
+      '--position_noise_train_sigma', type=float, default=0.0,
+      help='Std of Gaussian noise added to camera positions of training clips (metres); 0 is off.',
+  )
+  parser.add_argument(
+      '--position_noise_probability', type=float, default=0.5,
+      help='Fraction of training clips that get position noise.',
+  )
+  parser.add_argument(
+      '--position_noise_eval_sigma', type=float, default=0.0,
+      help='Std of position noise at test time (metres), with --test only; 0 is the standard test.',
+  )
+  parser.add_argument(
+      '--position_noise_eval_seed', type=int, default=0,
+      help='Seed of the test-time position noise; each clip gets the same noise for a given seed.',
+  )
 
   # IO
   parser.add_argument('--test', action='store_true')
@@ -238,7 +251,6 @@ def get_args():
   )
 
   args = parser.parse_args()
-  from utils.position_noise import validate_noise
   try:
     validate_noise(args.position_noise_train_sigma, args.position_noise_probability)
     validate_noise(args.position_noise_eval_sigma)
