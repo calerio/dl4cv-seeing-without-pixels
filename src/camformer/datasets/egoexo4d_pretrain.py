@@ -20,6 +20,7 @@ import pandas as pd
 import torch
 from utils.dataset_utils import matrix_to_pose7d, transform_camera_pose
 from datasets import gaze as gaze_lib
+from utils.position_noise import evaluation_rng, perturb_positions
 
 # Packaged CSV files (train_v2.csv etc.) shipped alongside this module.
 _PKG_DATA_FILES_DIR = os.path.join(
@@ -233,6 +234,21 @@ class EgoExo4DCameraPoseLongSeqForPretraining(torch.utils.data.Dataset):
       )
       return self.__getitem__(random.randint(0, len(self) - 1))
 
+    # Experiment 4: perturb raw world positions before choosing the relative origin.
+    # Separate RNG prevents augmentation draws from changing window sampling.
+    if self.mode == 'train':
+      sigma = getattr(self.args, 'position_noise_train_sigma', 0.0)
+      probability = getattr(self.args, 'position_noise_probability', 0.5)
+      if sigma > 0 and probability > 0:
+        if not hasattr(self, '_position_noise_rng'):
+          self._position_noise_rng = np.random.default_rng(torch.initial_seed())
+        cam_traj_slice = perturb_positions(cam_traj_slice, sigma, self._position_noise_rng, probability)
+    elif self.mode == 'test':
+      sigma = getattr(self.args, 'position_noise_eval_sigma', 0.0)
+      if sigma > 0:
+        rng = evaluation_rng(getattr(self.args, 'position_noise_eval_seed', 0), row['save_id'], frame_idx)
+        cam_traj_slice = perturb_positions(cam_traj_slice, sigma, rng)
+    # Validation remains clean; never tune on the benchmark validation takes.
     cam_traj_slice = transform_camera_pose(cam_traj_slice, self.encode_pose)
 
     t0 = (row['t0_idx'] - random_start) // self.sample_rate
