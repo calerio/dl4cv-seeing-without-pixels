@@ -78,3 +78,92 @@ seeds and test videos or takes, 10,000 resamples, seed 0; with three seeds the s
   is large (U0: 42.1 to 46.4).
 - U1 - S-exo also differs in input path, rate and axes (D4); U1 - E->X shares them and gives the same direction
   (-1.6, interval includes zero).
+
+## Version 2: each exo clip at its own frame rate (final)
+Version 1 above resampled every exo clip as if it were 30 FPS; about a third are 24 or 25 FPS, so those clips
+entered at 16 to 17 poses per second instead of 20 (D6 in [`docs/decisions.md`](../docs/decisions.md)). All five
+setups were trained again, seeds 0-2, with each clip's rate (`--exo_fps_table dynpose100k_fps/vipe_fps_v1.csv.gz`):
+runs `ee2_{Sego,Sexo,EX,U0,U1}_s{0,1,2}`, `bash ~/dl4cv/ego_exo_seed.sh <seed> v2`, code 17a1a42 (regression check
+738231: `reproduction OK`; one-epoch smoke test 738195). Jobs 738234 (seed 0), 738235 (seed 2), 738236 and 738237
+(seed 1). All 15 runs finished their 20 epochs on 17a1a42. Every number below comes from
+`scripts/slurm/ego_exo_results.sh` (code 5246e3c), job 740932. Z with the rate table: job 740931.
+
+Version 1 stays above for the record. As D6 fixes, version 2 is the experiment's result whatever it shows. The
+version 1 results, including the seed-0 pilot, were known when the rerun was decided; the rerun follows from the
+rate bug, and the reporting rule is the one fixed in `docs/ego_exo.md` before the first runs. Version 2 had no
+separate pilot gate: the three seeds were launched together.
+
+| Run | Seed | Ego test | Exo test |
+|---|---|---|---|
+| S-ego | 0 / 1 / 2 | 44.65 / 45.33 / 44.98 | - |
+| S-exo | 0 / 1 / 2 | - | 46.70 / 46.70 / 46.20 |
+| E->X | 0 / 1 / 2 | 32.89 / 32.70 / 32.15 | 47.40 / 45.50 / 46.20 |
+| U0 | 0 / 1 / 2 | 45.30 / 45.26 / 45.32 | 41.60 / 45.10 / 44.90 |
+| U1 | 0 / 1 / 2 | 45.08 / 45.13 / 44.85 | 41.70 / 42.50 / 45.80 |
+| Z, released ego model, no exo training | - | - | 26.40 |
+
+Three-seed comparisons, motion-to-text, same bootstrap as above (seeds, then takes or videos; 10,000 resamples):
+
+| Comparison | Test | Means (A, B) | B - A | 95% interval |
+|---|---|---|---|---|
+| U1 - S-ego | ego | 44.99, 45.02 | +0.03 | -0.61 to +0.68 |
+| U1 - S-exo | exo | 46.53, 43.33 | -3.20 | -6.49 to +0.20 |
+| U1 - E->X | exo | 46.37, 43.33 | -3.03 | -6.17 to +0.10 |
+| U1 - U0 | exo | 43.87, 43.33 | -0.53 | -3.61 to +2.78 |
+| U1 - U0 | ego | 45.29, 45.02 | -0.27 | -0.74 to +0.21 |
+| U0 - E->X (descriptive) | exo | 46.37, 43.87 | -2.50 | -5.69 to +0.58 |
+| U0 - S-exo (descriptive) | exo | 46.53, 43.87 | -2.67 | -6.08 to +0.56 |
+| E->X - S-exo (descriptive) | exo | 46.53, 46.37 | -0.17 | -3.02 to +2.66 |
+| E->X - S-ego (descriptive) | ego | 44.99, 32.58 | -12.41 | -15.33 to -9.27 |
+| U0 - S-ego (descriptive) | ego | 44.99, 45.29 | +0.31 | -0.34 to +0.99 |
+
+### Against the reporting rule
+- "One model matches the specialists": ego -0.61 to +0.68, inside +-1.5; exo -6.49 to +0.20, not inside +-3.
+  **Not claimed.** As in version 1, the exo test cannot exclude a gap of up to about 6.5 points.
+- "The domain token helps": U1 - U0 on DynPose is -0.53 (-3.61 to +2.78), and on Ego-Exo4D it is -0.27.
+  **Not claimed.**
+- Reported as measured: U0 against E->X, the comparison closest to sharing alone (same start, inputs and exo
+  steps, no token), is -2.50 (-5.69 to +0.58). E->X itself is level with S-exo (-0.17), so in version 2 the
+  starting point costs nothing measurable on exo, and the gap between the joint models and S-exo sits with the
+  joint training, though no interval excludes zero. Training on exo alone drops the ego score to 32.6 (E->X);
+  joint training keeps it at about 45.
+
+### Text-to-motion (descriptive, not part of the rule)
+| Comparison | Test | Means (A, B) | B - A | 95% interval |
+|---|---|---|---|---|
+| U1 - S-ego | ego | 47.33, 47.53 | +0.19 | -0.77 to +1.18 |
+| U1 - S-exo | exo | 48.70, 45.77 | -2.93 | -5.95 to +0.13 |
+| U1 - U0 | exo | 46.60, 45.77 | -0.83 | -2.73 to +1.11 |
+| U1 - U0 | ego | 47.66, 47.53 | -0.13 | -1.01 to +0.69 |
+| U1 - E->X | exo | 47.53, 45.77 | -1.77 | -4.34 to +0.75 |
+
+Same direction as motion-to-text.
+
+### Version 2 against version 1
+Per setup, version 2 minus version 1 on the same test questions: exo S-exo -0.20, E->X +0.60, U0 -0.73, U1 -0.80;
+ego S-ego +0.03, E->X +0.36, U0 +0.25, U1 -0.07. Every interval includes zero (widest exo: U0, -3.78 to +2.31).
+Correcting the rate did not change any result measurably; S-ego and S-exo do not use the rate and differ only by
+run-to-run noise.
+
+### DynPose: test clips from videos that are also in training
+No test clip is a training clip, but in the authors' split 941 of the 5,000 test clips (236 of 1,379 test videos)
+come from videos with other clips in training; after the scale filter, 845 clips, 212 videos, touching 521 of the
+1,000 questions. On the 479 questions with no clip from a training video:
+
+| Setup | All 1,000 | The 479 | Seeds on the 479 |
+|---|---|---|---|
+| S-exo | 46.53 | 47.53 | 47.18 / 47.81 / 47.60 |
+| E->X | 46.37 | 47.39 | 48.23 / 47.81 / 46.14 |
+| U0 | 43.87 | 44.89 | 41.96 / 46.35 / 46.35 |
+| U1 | 43.33 | 45.44 | 44.05 / 45.51 / 46.76 |
+
+Every setup scores about 1 to 2 points higher on the unseen-video questions, so the overlap does not inflate the
+scores. On them U1 - S-exo is -2.09, U1 - E->X -1.95, U0 - E->X -2.51, U1 - U0 +0.56: the same picture.
+
+### Limits
+- Three seeds understate the seed spread on exo. A Welch t interval over the three seed means alone, test
+  questions held fixed, is wider than the bootstrap: U1 - S-exo -3.20 (-8.47 to +2.07), U1 - E->X -3.03 (-7.63 to
+  +1.56), U0 - E->X -2.50 (-6.60 to +1.60), U1 - U0 -0.53 (-5.25 to +4.18). On ego the two agree (U1 - S-ego
+  +0.03, -0.68 to +0.75). The exo intervals in the tables above should be read as too narrow, not too wide.
+- The exo test has 1,000 questions and the joint models vary by up to 4 points between seeds (U1: 41.7 to 45.8).
+- U1 - S-exo also differs in input path, rate and axes (D4); E->X shares them with the joint models.
