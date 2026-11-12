@@ -215,6 +215,12 @@ def get_args():
       help='Weight of auxiliary scenario classification loss.',
   )
 
+  # Experiment 4 (off by default). Units are those of the raw stored positions.
+  parser.add_argument('--position_noise_train_sigma', type=float, default=0.0)
+  parser.add_argument('--position_noise_probability', type=float, default=0.5)
+  parser.add_argument('--position_noise_eval_sigma', type=float, default=0.0)
+  parser.add_argument('--position_noise_eval_seed', type=int, default=0)
+
   # IO
   parser.add_argument('--test', action='store_true')
   parser.add_argument('--log_dir', type=str, default='logs')
@@ -232,6 +238,19 @@ def get_args():
   )
 
   args = parser.parse_args()
+  from utils.position_noise import validate_noise
+  try:
+    validate_noise(args.position_noise_train_sigma, args.position_noise_probability)
+    validate_noise(args.position_noise_eval_sigma)
+  except ValueError as exc:
+    parser.error(str(exc))
+  noise_on = args.position_noise_train_sigma > 0 or args.position_noise_eval_sigma > 0
+  if noise_on and (args.dataset != 'egoexo4d_pretrain_longseq' or args.use_pi3_pose or args.gaze != 'none'):
+    parser.error('experiment 4 supports only Aria egoexo4d_pretrain_longseq without gaze')
+  if args.test and args.position_noise_train_sigma > 0:
+    parser.error('use --position_noise_eval_sigma for evaluation, not the training flag')
+  if not args.test and args.position_noise_eval_sigma > 0:
+    parser.error('--position_noise_eval_sigma requires --test')
   # Internal encoder/checkpoints use an integer code; map the named flag to it.
   args.encode_pose = {'abs7d': 0, 'rel9d': 2, 'rel9d_grav': 11}[
       args.pose_encoding
@@ -355,7 +374,11 @@ def check_resume(args, log_dir, revision=''):
   if resuming:
     old_args = os.path.join(log_dir, 'args.json')
     if os.path.exists(old_args):
-      old_epochs = json.load(open(old_args)).get('epochs')
+      previous = json.load(open(old_args))
+      for key, default in [('position_noise_train_sigma', 0.0), ('position_noise_probability', 0.5)]:
+        if previous.get(key, default) != getattr(args, key, default):
+          raise SystemExit(f'refusing to resume with changed {key}')
+      old_epochs = previous.get('epochs')
       if old_epochs != args.epochs:
         raise SystemExit(f'refusing to resume {log_dir} with --epochs {args.epochs}: it was started with {old_epochs}')
     if revision is not None and os.path.exists(start_file):
