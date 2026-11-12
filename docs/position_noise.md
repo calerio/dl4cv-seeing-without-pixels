@@ -96,8 +96,9 @@ smoke test had run, and it gives no accuracy.
 - N is trained on the same kind of noise it is tested on, so this measures robustness to a known corruption,
   not to unseen ones (the corruption benchmark keeps its test corruptions out of training; Hendrycks and
   Dietterich 2019). Whether it carries over to real tracking error is not tested here.
-- Per-frame jitter is the most common noise augmentation for motion sensor data (Um et al. 2017), and has been
-  found to hurt or not help some motion models (Um et al. 2017; Wu et al. 2025). It was chosen knowingly as the
+- Per-frame jitter is "one of the most commonly employed" augmentations for motion sensor data (Wu et al. 2025),
+  and has been found not to help a wrist-accelerometer classifier (Um et al. 2017) and to hurt IMU-based pose
+  estimation (Wu et al. 2025). It was chosen knowingly as the
   standard, simplest perturbation.
 
 - Missing frames and rotation noise are not tested.
@@ -114,5 +115,6 @@ smoke test had run, and it gives no accuracy.
   additive sensor noise, "fails to improve" their classifier because the fast fluctuations resemble the symptom
   being classified.
 - Wu, Guo and Qin 2025. *MODA: Motion-Drift Augmentation for Inertial Human Motion Analysis.* CVPR 2025. Body-worn
-  IMUs: jittering has adverse effects on action recognition and pose estimation; simulated sensor displacement
-  (drift) helps.
+  IMUs: calls jittering "one of the most commonly employed" augmentations; in their fully supervised pose-estimation
+  experiments, jittering and moving averages have "adverse effects", while simulated sensor displacement (drift)
+  improves results.
