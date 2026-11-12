@@ -20,7 +20,8 @@ No new data. The Ego-Exo4D training and test files and the released checkpoint a
 **Units (checked 12 Nov 2026 on the stored files).** Positions are in metres: six random training takes are all
 float64, all finite, with unit quaternions; a clip moves 1 to 3 m in total, and the median step between stored
 frames is 0.9 to 3.4 cm (99th percentile 5 to 11 cm). So a noise of 0.01 is 1 cm per coordinate, about the size of
-one ordinary frame-to-frame step.
+one ordinary frame-to-frame step, and about 1.7 cm in total, close to the accuracy Meta reports for Aria's
+trajectories (no more than 1.5 cm in room-scale scenes; Engel et al. 2023, arXiv:2308.13561).
 
 ## Method
 In the dataset, after the clip's frames are chosen and before the usual conversion to relative poses
@@ -79,7 +80,8 @@ of the same model, not extra training runs.
 - The other noise levels and seeds are reported as a curve, without separate claims.
 
 ## Limitations
-- Independent noise on every frame is a simple stress test, not a model of drift or tracking loss.
+- Independent noise on every frame is a simple stress test. Real tracking error is mostly smooth drift, which
+  disturbs frame-to-frame motion less; drift and tracking loss are not tested.
 - At 1 cm the noise is about as large as an ordinary step between frames, and 5 cm several times larger, so the
   higher levels mostly test how much fine motion the model can lose.
 - Missing frames and rotation noise are not tested.

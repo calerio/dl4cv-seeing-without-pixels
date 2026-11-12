@@ -13,8 +13,10 @@ conversion; rotations untouched. Training: standard deviation 0.01 m, on 50% of 
 standard test), 0.005, 0.01, 0.02 and 0.05 m, noise seeds 0, 1 and 2, the same noisy inputs for both models.
 Training seeds 0, 1 and 2; last checkpoint. Positions were checked to be in metres on the stored files (12 Nov).
 
-**Why.** The levels make a controlled sensitivity curve around the training value; they are not a measured
-tracking-error distribution. 0.01 m is about one ordinary frame-to-frame step (median 0.9 to 3.4 cm), so it is
+**Why.** 0.01 m per coordinate is about 1.7 cm of total position error, close to the accuracy Meta reports for
+Aria's closed-loop trajectories ("no more than 1.5 cm" global RMSE in room-scale scenes; Engel et al. 2023,
+arXiv:2308.13561). The other levels make a sensitivity curve around it (a better tracker, then worse ones); they
+are not a measured error distribution, and real tracking error is smooth drift, not independent per-frame noise. 0.01 m is about one ordinary frame-to-frame step (median 0.9 to 3.4 cm), so it is
 large enough to matter without erasing the clip's overall path (1 to 3 m).
 
 **Effect on comparisons with the paper.** None on the clean test: A and N are tested on the standard benchmark
