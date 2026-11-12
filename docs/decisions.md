@@ -3,21 +3,24 @@
 Choices that change how we run or compare experiments, with the reason for each. Newest first.
 Each one is meant to be cited in the report.
 
-## D7. Experiment 4 adds noise to camera positions, sigma 0.01 m on half the training clips (12 Nov 2026)
+## D7. Experiment 4 adds noise to camera positions, sigma 0.005 m on half the training clips (12 Nov 2026)
 
 **Situation.** Experiment 4 (`docs/position_noise.md`) asks whether training on noisy positions makes the model
 more robust to noisy test positions. The paper never adds noise, so the choice of noise has no reference.
 
 **Decision.** Gaussian noise, independent per frame and coordinate, added to raw x, y, z before the relative-pose
-conversion; rotations untouched. Training: standard deviation 0.01 m, on 50% of training clips. Testing: 0 (the
+conversion; rotations untouched. Training: standard deviation 0.005 m, on 50% of training clips. Testing: 0 (the
 standard test), 0.005, 0.01, 0.02 and 0.05 m, noise seeds 0, 1 and 2, the same noisy inputs for both models.
 Training seeds 0, 1 and 2; last checkpoint. Positions were checked to be in metres on the stored files (12 Nov).
 
-**Why.** 0.01 m per coordinate is about 1.7 cm of total position error, close to the accuracy Meta reports for
-Aria's closed-loop trajectories ("no more than 1.5 cm" global RMSE in room-scale scenes; Engel et al. 2023,
-arXiv:2308.13561). The other levels make a sensitivity curve around it (a better tracker, then worse ones); they
-are not a measured error distribution, and real tracking error is smooth drift, not independent per-frame noise. 0.01 m is about one ordinary frame-to-frame step (median 0.9 to 3.4 cm), so it is
-large enough to matter without erasing the clip's overall path (1 to 3 m).
+**Why.** Measured on the stored poses, the median step between frames is 0.9 to 3.4 cm, so per-frame noise of
+1 cm would be as large as ordinary motion. 0.005 m (0.5 cm per coordinate, about 0.9 cm in total) is a deliberately
+conservative strength that limits damage to fine motion; it is not tuned. It sits below the accuracy Meta reports
+for Aria's closed-loop trajectories ("no more than 1.5 cm" global RMSE in room-scale scenes; Engel et al. 2023,
+arXiv:2308.13561). The test levels make a sensitivity curve from there up to 0.05 m; they are not a measured error
+distribution. Real tracking error is mostly smooth drift; independent per-frame noise is harsher on fine motion,
+and jitter is known to hurt some motion models (Um et al. 2017; Wu et al., CVPR 2025). We chose it knowingly as the
+standard, simplest perturbation; drift is not tested.
 
 **Effect on comparisons with the paper.** None on the clean test: A and N are tested on the standard benchmark
 without noise, comparable with 44.81. All noisy results are a separate experiment with no paper counterpart.

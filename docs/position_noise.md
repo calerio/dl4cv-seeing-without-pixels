@@ -19,9 +19,9 @@ No new data. The Ego-Exo4D training and test files and the released checkpoint a
 
 **Units (checked 12 Nov 2026 on the stored files).** Positions are in metres: six random training takes are all
 float64, all finite, with unit quaternions; a clip moves 1 to 3 m in total, and the median step between stored
-frames is 0.9 to 3.4 cm (99th percentile 5 to 11 cm). So a noise of 0.01 is 1 cm per coordinate, about the size of
-one ordinary frame-to-frame step, and about 1.7 cm in total, close to the accuracy Meta reports for Aria's
-trajectories (no more than 1.5 cm in room-scale scenes; Engel et al. 2023, arXiv:2308.13561).
+frames is 0.9 to 3.4 cm (99th percentile 5 to 11 cm). So the training noise of 0.005 is 0.5 cm per coordinate (about 0.9 cm in total), below one ordinary
+frame-to-frame step and below the accuracy Meta reports for Aria's trajectories (no more than 1.5 cm in
+room-scale scenes; Engel et al. 2023, arXiv:2308.13561); the test level 0.01 is about that accuracy.
 
 ## Method
 In the dataset, after the clip's frames are chosen and before the usual conversion to relative poses
@@ -54,7 +54,7 @@ last checkpoint.
 | Run | Training noise | Purpose |
 |---|---|---|
 | A | none (authors' setup) | Same extra training, so a gain is not just "more training" |
-| N | sigma 0.01 m on half the clips (D7) | The experiment |
+| N | sigma 0.005 m on half the clips (D7) | The experiment |
 
 `bash ~/dl4cv/position_noise_seed.sh <seed> --with_tests` submits A and N as two jobs (about 3 hours of training
 each) and tests each run on clean inputs and at sigma 0.005, 0.01, 0.02 and 0.05 m with noise seeds 0, 1 and 2,
@@ -73,7 +73,7 @@ At each noise level the number is the mean over the three noise seeds; the noise
 of the same model, not extra training runs.
 
 ## Reporting rule (fixed before any run)
-- Main comparison: N against A at sigma 0.01, noise seed 0, with the paired bootstrap of `compare_runs.py` over
+- Main comparison: N against A at sigma 0.01 (Aria's reported accuracy), noise seed 0, with the paired bootstrap of `compare_runs.py` over
   seeds and recordings. N is called more robust if the interval of the difference is above zero.
 - Clean cost: N against A on clean inputs, same test. A drop is reported with its interval; "no harm" is not
   claimed just because the interval includes zero.

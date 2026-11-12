@@ -17,7 +17,7 @@ set -euo pipefail
 cd ~/dl4cv/camformer
 mkdir -p out err ~/dl4cv/run_ckpts
 
-TRAIN_SIGMA=0.01                      # D7
+TRAIN_SIGMA=0.005                     # D7
 EVAL_SIGMAS="0.005 0.01 0.02 0.05"    # D7; 0 is the clean test
 NOISE="--position_noise_train_sigma $TRAIN_SIGMA --position_noise_probability 0.5"
 
