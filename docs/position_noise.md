@@ -17,11 +17,14 @@ scores stay comparable with the paper's 44.81.
 ## Data
 No new data. The Ego-Exo4D training and test files and the released checkpoint already on the cluster.
 
-**Units (checked 12 Nov 2026 on the stored files).** Positions are in metres: six random training takes are all
-float64, all finite, with unit quaternions; a clip moves 1 to 3 m in total, and the median step between stored
-frames is 0.9 to 3.4 cm (99th percentile 5 to 11 cm). So the training noise of 0.005 is 0.5 cm per coordinate (about 0.9 cm in total), below one ordinary
-frame-to-frame step and below the accuracy Meta reports for Aria's trajectories (no more than 1.5 cm in
-room-scale scenes; Engel et al. 2023, arXiv:2308.13561); the test level 0.01 is about that accuracy.
+**Units and scale (checked 12 Nov 2026, `src/camformer/position_units_check.py`, 20 random training takes,
+seed 0).** Positions are in metres: all float64, all finite, unit quaternions, a clip moves 0.2 to 6.6 m in total.
+The median step between stored frames ranges from 0.21 cm (cooking, a person standing at a counter) to 3.7 cm
+(basketball), median 1.44 cm over takes. Noise of sigma per coordinate on each frame puts noise of about
+sqrt(2) x sqrt(3) x sigma on each step: 1.2 cm at sigma 0.005 and 2.4 cm at 0.01. At the training level 0.005 the
+step noise is already larger than the median step in 7 of the 20 takes (the slow, mostly procedural ones); at 0.01
+in 13 of 20, and at 0.02 and above in all 20. Even the training level therefore buries the fine motion of slow
+takes, which is where the paper finds the trajectory weakest.
 
 ## Method
 In the dataset, after the clip's frames are chosen and before the usual conversion to relative poses
@@ -69,19 +72,39 @@ Motion-to-text accuracy, overall and procedural, per seed and mean over the thre
 | A | | | | | |
 | N | | | | | |
 
-At each noise level the number is the mean over the three noise seeds; the noise seeds are repeated measurements
-of the same model, not extra training runs.
+This table is descriptive: at each noise level the number is the mean over the three noise seeds, which are
+repeated measurements of the same model, not extra training runs. The claims rest only on the rule below.
 
 ## Reporting rule (fixed before any run)
-- Main comparison: N against A at sigma 0.01 (Aria's reported accuracy), noise seed 0, with the paired bootstrap of `compare_runs.py` over
-  seeds and recordings. N is called more robust if the interval of the difference is above zero.
-- Clean cost: N against A on clean inputs, same test. A drop is reported with its interval; "no harm" is not
-  claimed just because the interval includes zero.
+Written before any noisy test result existed: when the training level was changed from 0.01 to 0.005, only the
+smoke test had run, and it gives no accuracy.
+- Main comparison: N against A at test noise 0.01 m, noise seed 0, motion-to-text overall, with the paired
+  bootstrap of `compare_runs.py` over seeds and recordings. 0.01 is twice the training level, so N is tested
+  beyond what it saw; the matched level 0.005 is reported next to it, without a separate claim. N is called more
+  robust if the interval of the difference is above zero.
+- Clean cost: N against A on clean inputs, same test. N is said to keep clean accuracy only if the whole interval
+  lies above -1.0 point (the same bar as experiment 3). With 3 seeds an interval about 2 points wide is typical
+  (experiment 1), so a cost under 1 point may not be detectable; that is said if it happens.
 - The other noise levels and seeds are reported as a curve, without separate claims.
 
 ## Limitations
-- Independent noise on every frame is a simple stress test. Real tracking error is mostly smooth drift, which
-  disturbs frame-to-frame motion less; drift and tracking loss are not tested.
-- At 1 cm the noise is about as large as an ordinary step between frames, and 5 cm several times larger, so the
-  higher levels mostly test how much fine motion the model can lose.
+- Independent noise on every frame is a simple stress test. Real tracking error is likely to be smoother (Meta's
+  Aria accuracy is a global error of whole trajectories, and Aria's open-loop error is described as drift), which
+  would disturb frame-to-frame motion less; we have not measured its shape. Drift and tracking loss are not tested.
+- Per-frame jitter is the most common noise augmentation for motion sensor data (Um et al. 2017), and has been
+  found to hurt or not help some motion models (Um et al. 2017; Wu et al. 2025). It was chosen knowingly as the
+  standard, simplest perturbation.
+
 - Missing frames and rotation noise are not tested.
+
+## References
+- Engel et al. 2023. *Project Aria: A New Tool for Egocentric Multi-Modal AI Research.* arXiv:2308.13561. Measures
+  closed-loop Aria trajectories: "typical global RMSE translation error of no more than 1.5 cm in room-scale
+  scenarios" (a whole-trajectory error, not per-frame noise).
+- Um et al. 2017. *Data Augmentation of Wearable Sensor Data for Parkinson's Disease Monitoring using Convolutional
+  Neural Networks.* ICMI 2017, arXiv:1706.00527. Wrist accelerometer data: jittering, described as simulating
+  additive sensor noise, "fails to improve" their classifier because the fast fluctuations resemble the symptom
+  being classified.
+- Wu, Guo and Qin 2025. *MODA: Motion-Drift Augmentation for Inertial Human Motion Analysis.* CVPR 2025. Body-worn
+  IMUs: jittering has adverse effects on action recognition and pose estimation; simulated sensor displacement
+  (drift) helps.

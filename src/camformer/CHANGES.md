@@ -10,7 +10,7 @@ must give their 44.81 (33.61 on procedural questions); it always has.
 To see every line: clone their repository at `ef8a3ba` and run `diff -ru <their clone> src/camformer`.
 
 ## Their files we changed: 7 of 19 (the other 12 are identical)
-Almost all of it is additions (about 690 lines added, 37 changed or removed).
+Almost all of it is additions (about 750 lines added, 37 changed or removed).
 
 | File | What we added | Flags (default = authors') | For |
 |---|---|---|---|
@@ -22,14 +22,14 @@ Almost all of it is additions (about 690 lines added, 37 changed or removed).
 | `datasets/egoexo4d_pretrain.py` | the input window as frame indices (same random draws as theirs), so gaze can be read for exactly those frames; position noise on training and test clips, with its own random generator | `--gaze`, `--position_noise_*` | exp. 3, 4 (D7) |
 | `datasets/dynpose.py` | exo clips in the long-sequence format, resampled to 20 poses per second at each clip's own frame rate, turned into the ego camera axes | `--exo_resample_hz`, `--exo_fps_table`, `--exo_to_aria_axes`, `--exo_eval_split` | exp. 2 (D4, D6) |
 
-## Files we added: 17 code files and 3 data files
+## Files we added: 18 code files and 3 data files
 | Purpose | Files |
 |---|---|
 | Scoring, one row per test question | `score_mcq.py` (Ego-Exo4D, by activity type and visibility), `score_exo_mcq.py` (DynPose), `score_nymeria.py`, `eval_full_retrieval.py` |
 | Comparing setups | `compare_runs.py` (paired two-level bootstrap over seeds and recordings), `check_finished.py` (only finished runs are scored) |
 | Data preparation | `gaze_prep.py`, `datasets/gaze.py` (exp. 3), `dynpose_fps.py` (exp. 2 frame rates) |
 | Augmentation | `utils/position_noise.py` (exp. 4) |
-| Diagnostics | `diagnose_within_take.py` (exp. 1 and 3 gates), `exo_checks.py` (exp. 2 axes, rates, speeds) |
+| Diagnostics | `diagnose_within_take.py` (exp. 1 and 3 gates), `exo_checks.py` (exp. 2 axes, rates, speeds), `position_units_check.py` (exp. 4 units) |
 | Tests (CPU, seconds) | `test_hard_negatives.py`, `test_ego_exo.py`, `test_gaze.py`, `test_train_guards.py`, `test_position_noise.py` |
 | Data files | `data_files/egoexo4d/gaze_donors_v1.csv.gz`, `data_files/egoexo4d/gaze_alignment_decision.txt`, `data_files/dynpose100k_fps/vipe_fps_v1.csv.gz` |
 
