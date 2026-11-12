@@ -115,24 +115,24 @@ for label, a, b, t in (('U1 - S-ego', 'Sego', 'U1', 'ego'), ('U1 - S-exo', 'Sexo
   print(f'{t} {label}: {d:+.2f} ({d - h:+.2f} to {d + h:+.2f}), df {df:.1f}')
 PYEOF
 
-cmp() { echo; echo "== $1"; shift; python compare_runs.py "$@"; }
+compare() { echo; echo "== $1"; shift; python compare_runs.py "$@"; }
 # The comparisons fixed in docs/ego_exo.md before the first runs, motion-to-text.
-cmp "ego m2t U1 - S-ego" --a $(f ee2 Sego ego) --b $(f ee2 U1 ego)
-cmp "exo m2t U1 - S-exo" --a $(f ee2 Sexo exo) --b $(f ee2 U1 exo)
-cmp "exo m2t U1 - U0" --a $(f ee2 U0 exo) --b $(f ee2 U1 exo)
-cmp "ego m2t U1 - U0" --a $(f ee2 U0 ego) --b $(f ee2 U1 ego)
-cmp "exo m2t U1 - E->X" --a $(f ee2 EX exo) --b $(f ee2 U1 exo)
+compare "ego m2t U1 - S-ego" --a $(f ee2 Sego ego) --b $(f ee2 U1 ego)
+compare "exo m2t U1 - S-exo" --a $(f ee2 Sexo exo) --b $(f ee2 U1 exo)
+compare "exo m2t U1 - U0" --a $(f ee2 U0 exo) --b $(f ee2 U1 exo)
+compare "ego m2t U1 - U0" --a $(f ee2 U0 ego) --b $(f ee2 U1 ego)
+compare "exo m2t U1 - E->X" --a $(f ee2 EX exo) --b $(f ee2 U1 exo)
 # Descriptive: not fixed in advance.
-cmp "exo m2t U0 - E->X (descriptive)" --a $(f ee2 EX exo) --b $(f ee2 U0 exo)
-cmp "exo m2t U0 - S-exo (descriptive)" --a $(f ee2 Sexo exo) --b $(f ee2 U0 exo)
-cmp "exo m2t E->X - S-exo (descriptive)" --a $(f ee2 Sexo exo) --b $(f ee2 EX exo)
-cmp "ego m2t E->X - S-ego (descriptive)" --a $(f ee2 Sego ego) --b $(f ee2 EX ego)
-cmp "ego m2t U0 - S-ego (descriptive)" --a $(f ee2 Sego ego) --b $(f ee2 U0 ego)
-cmp "ego t2m U1 - S-ego (descriptive)" --metric t2m --a $(f ee2 Sego ego) --b $(f ee2 U1 ego)
-cmp "exo t2m U1 - S-exo (descriptive)" --metric t2m --a $(f ee2 Sexo exo) --b $(f ee2 U1 exo)
-cmp "exo t2m U1 - U0 (descriptive)" --metric t2m --a $(f ee2 U0 exo) --b $(f ee2 U1 exo)
-cmp "ego t2m U1 - U0 (descriptive)" --metric t2m --a $(f ee2 U0 ego) --b $(f ee2 U1 ego)
-cmp "exo t2m U1 - E->X (descriptive)" --metric t2m --a $(f ee2 EX exo) --b $(f ee2 U1 exo)
+compare "exo m2t U0 - E->X (descriptive)" --a $(f ee2 EX exo) --b $(f ee2 U0 exo)
+compare "exo m2t U0 - S-exo (descriptive)" --a $(f ee2 Sexo exo) --b $(f ee2 U0 exo)
+compare "exo m2t E->X - S-exo (descriptive)" --a $(f ee2 Sexo exo) --b $(f ee2 EX exo)
+compare "ego m2t E->X - S-ego (descriptive)" --a $(f ee2 Sego ego) --b $(f ee2 EX ego)
+compare "ego m2t U0 - S-ego (descriptive)" --a $(f ee2 Sego ego) --b $(f ee2 U0 ego)
+compare "ego t2m U1 - S-ego (descriptive)" --metric t2m --a $(f ee2 Sego ego) --b $(f ee2 U1 ego)
+compare "exo t2m U1 - S-exo (descriptive)" --metric t2m --a $(f ee2 Sexo exo) --b $(f ee2 U1 exo)
+compare "exo t2m U1 - U0 (descriptive)" --metric t2m --a $(f ee2 U0 exo) --b $(f ee2 U1 exo)
+compare "ego t2m U1 - U0 (descriptive)" --metric t2m --a $(f ee2 U0 ego) --b $(f ee2 U1 ego)
+compare "exo t2m U1 - E->X (descriptive)" --metric t2m --a $(f ee2 EX exo) --b $(f ee2 U1 exo)
 # Version 2 - version 1 of the same setup (descriptive): what the frame-rate fix changed. S-ego and S-exo do not
 # resample, so their rows show how much a rerun moves without any change to their inputs.
 for x in Sexo EX U0 U1; do cmp "exo m2t $x: version 2 - version 1" --a $(f ee $x exo) --b $(f ee2 $x exo); done

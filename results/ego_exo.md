@@ -119,13 +119,15 @@ Three-seed comparisons, motion-to-text, same bootstrap as above (seeds, then tak
 
 ### Against the reporting rule
 - "One model matches the specialists": ego -0.61 to +0.68, inside +-1.5; exo -6.49 to +0.20, not inside +-3.
-  **Not claimed.** As in version 1, the exo test cannot exclude a gap of up to about 6.5 points.
+  **Not claimed.** As in version 1, the exo test cannot exclude a gap of up to about 6.5 points (bootstrap), or 8.5
+  with the seed-level interval below (Limits).
 - "The domain token helps": U1 - U0 on DynPose is -0.53 (-3.61 to +2.78), and on Ego-Exo4D it is -0.27.
   **Not claimed.**
 - Reported as measured: U0 against E->X, the comparison closest to sharing alone (same start, inputs and exo
-  steps, no token), is -2.50 (-5.69 to +0.58). E->X itself is level with S-exo (-0.17), so in version 2 the
-  starting point costs nothing measurable on exo, and the gap between the joint models and S-exo sits with the
-  joint training, though no interval excludes zero. Training on exo alone drops the ego score to 32.6 (E->X);
+  steps, no token), is -2.50 (-5.69 to +0.58). E->X is level with S-exo within about +-3 (-0.17, -3.02 to
+  +2.66); E->X and S-exo also differ in inputs, pooling and architecture (`docs/ego_exo.md`), so this does not
+  isolate the starting weights. U0 sits 2.5 below E->X, with an interval that includes zero. The data do not say
+  where the gap between the joint models and S-exo comes from. Training on exo alone drops the ego score to 32.6 (E->X);
   joint training keeps it at about 45.
 
 ### Text-to-motion (descriptive, not part of the rule)
@@ -142,8 +144,9 @@ Same direction as motion-to-text.
 ### Version 2 against version 1
 Per setup, version 2 minus version 1 on the same test questions: exo S-exo -0.20, E->X +0.60, U0 -0.73, U1 -0.80;
 ego S-ego +0.03, E->X +0.36, U0 +0.25, U1 -0.07. Every interval includes zero (widest exo: U0, -3.78 to +2.31).
-Correcting the rate did not change any result measurably; S-ego and S-exo do not use the rate and differ only by
-run-to-run noise.
+No change from correcting the rate was resolved; the exo intervals are about +-3 points, so a shift of that size
+would not be detected. S-ego and S-exo do not use the rate, so their rows show how much a rerun on newer code
+moves a setup.
 
 ### DynPose: test clips from videos that are also in training
 No test clip is a training clip, but in the authors' split 941 of the 5,000 test clips (236 of 1,379 test videos)
