@@ -83,7 +83,9 @@ Written before any full run. The training level was changed from 0.01 to 0.005 b
 code. The smoke run does produce a one-epoch noisy accuracy; it only checks that the pipeline works, and nothing
 (training level, test levels or this rule) was chosen from it.
 - Main comparison: N against A on **mean accuracy over the four noise levels** (0.005, 0.01, 0.02, 0.05 m),
-  noise seed 0, motion-to-text overall, with the paired bootstrap of `compare_runs.py` over seeds and recordings.
+  noise seed 0, motion-to-text overall, each level weighted equally. `average_noise_levels.py` averages each
+  question's score over the four levels per run, and `compare_runs.py` runs the paired bootstrap over seeds and
+  recordings on those files.
   This is a screening test: N is called more robust if the interval of the difference is above zero. With 3 seeds
   only a gain of roughly 1.5 points or more is likely to be resolved (experiment 1's procedural intervals were about 2.5 points
   wide); a smaller gain would be reported as not resolved, not as absent. This follows the standard protocol
