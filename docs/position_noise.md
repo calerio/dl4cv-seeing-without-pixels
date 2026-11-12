@@ -60,8 +60,9 @@ last checkpoint.
 | A | none (authors' setup) | Same extra training, so a gain is not just "more training" |
 | N | sigma 0.005 m on half the clips (D7) | The experiment |
 
-`bash ~/dl4cv/position_noise_seed.sh <seed> --with_tests` submits A and N as two jobs (about 3 hours of training
-each, then about 40 minutes of tests; the account queues 4 jobs, so two seeds at a time) and tests each run on clean inputs and at sigma 0.005, 0.01, 0.02 and 0.05 m with noise seeds 0, 1 and 2,
+`bash ~/dl4cv/position_noise_seed.sh <seed> --with_tests` submits A and N as two jobs, about 3 hours of training
+each followed by the tests. The account queues 4 jobs, so at most two seeds are queued at a time; the launcher
+refuses a seed already in the queue. Each run is tested on clean inputs and at sigma 0.005, 0.01, 0.02 and 0.05 m with noise seeds 0, 1 and 2,
 through `eval_run.sh` (the standard 4-second test window). `bash ~/dl4cv/position_noise_seed.sh smoke` runs one
 epoch of N first, then one noisy test of it (sigma 0.005, noise seed 0), so the noisy test path is exercised
 before any full run; a seed is refused until that smoke run has finished on the deployed code revision.
@@ -78,7 +79,7 @@ This table is descriptive: at each noise level the number is the mean over the t
 repeated measurements of the same model, not extra training runs. The claims rest only on the rule below.
 
 ## Reporting rule (fixed before any run)
-Written before any full run. The training level was changed from 0.01 to 0.005 before any job had run on this
+Written before any full run. The training level was changed from 0.01 to 0.005 before any noisy job had run on this
 code. The smoke run does produce a one-epoch noisy accuracy; it only checks that the pipeline works, and nothing
 (training level, test levels or this rule) was chosen from it.
 - Main comparison: N against A on **mean accuracy over the four noise levels** (0.005, 0.01, 0.02, 0.05 m),

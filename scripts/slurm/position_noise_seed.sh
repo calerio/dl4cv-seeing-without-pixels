@@ -1,6 +1,5 @@
 #!/bin/bash
-# Submits the two runs of one seed of experiment 4 (docs/position_noise.md, D7) as two GPU jobs (the queue
-# allows 2 running): A, the authors' setup, and N, the same with position noise on half the training clips.
+# Submits the two runs of one seed of experiment 4 (docs/position_noise.md, D7) as two GPU jobs: A, the authors' setup, and N, the same with position noise on half the training clips.
 # About 3 hours of training each.
 #
 # Usage, on the login node after scripts/deploy.sh:
@@ -8,8 +7,8 @@
 #   bash ~/dl4cv/position_noise_seed.sh <seed> [--with_tests] [--resume]
 # A seed is refused until the smoke run has finished on the deployed code revision.
 # Each seed is 2 jobs (the account may queue 4 and run 2 at once, so at most two seeds are queued at a time).
-# With --with_tests each job tests its run right after training, 13 times through eval_run.sh (about 3 minutes
-# each): once on clean inputs (the standard test, comparable with the paper) and once per evaluation noise level of
+# With --with_tests each job tests its run right after training, 13 times through eval_run.sh (estimated a few
+# minutes each): once on clean inputs (the standard test, comparable with the paper) and once per evaluation noise level of
 # D7 and noise seed 0, 1, 2. Each noisy test writes test_questions_<flags>.csv next to test_questions.csv.
 # --resume lets a killed chain be resubmitted: existing runs continue from their last.ckpt (train.sh always
 # resumes), finished ones end at once; tests whose CSV exists are not run again.
@@ -79,5 +78,14 @@ run() {  # job name, extra flags: training, then the tests, in one job
   fi
   echo "$cmd"
 }
+# Refuse if a job of this seed is already queued (a half-submitted seed must not be submitted twice),
+# or if fewer than 2 of the account's 4 queue slots are free.
+queued=$(squeue -u "$USER" -h -o %j)
+if echo "$queued" | grep -qx -e "pn_A_s$seed" -e "pn_N_s$seed"; then
+  echo "refusing: a job of seed $seed is already queued (squeue -u $USER)" >&2; exit 1
+fi
+if [ "$(echo "$queued" | grep -c .)" -gt 2 ]; then
+  echo "refusing: fewer than 2 of the 4 queue slots are free (squeue -u $USER)" >&2; exit 1
+fi
 sub A_s$seed "$(run $A '')" 06:00:00
 sub N_s$seed "$(run $N "$NOISE")" 06:00:00
