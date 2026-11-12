@@ -86,14 +86,15 @@ code. The smoke run does produce a one-epoch noisy accuracy; it only checks that
   noise seed 0, motion-to-text overall, each level weighted equally. `average_noise_levels.py` averages each
   question's score over the four levels per run, and `compare_runs.py` runs the paired bootstrap over seeds and
   recordings on those files.
-  This is a screening test: N is called more robust if the interval of the difference is above zero. With 3 seeds
-  only a gain of roughly 1.5 points or more is likely to be resolved (experiment 1's procedural intervals were about 2.5 points
-  wide); a smaller gain would be reported as not resolved, not as absent. This follows the standard protocol
+  This is a screening test: N is called more robust if the interval of the difference is above zero. How small a gain
+  it can resolve has not been measured for this statistic (no noisy test output exists before the runs); the
+  interval width is reported with the result, and a difference whose interval includes zero is reported as not
+  resolved, not as absent. This follows the standard protocol
   for corruption robustness (Hendrycks and Dietterich 2019), which scores a model across all severity levels of a
   corruption rather than at one chosen level, so no single level can be picked after the fact. Accuracy at each
   level, including the matched level 0.005, is reported as a curve without separate claims.
 - Clean cost: N against A on clean inputs, same test, reported as the difference with its interval. If the
-  interval includes zero it is reported as "no cost resolved, within about ±1.5 points", not as "no cost".
+  interval includes zero it is reported as "no cost resolved", with the interval, not as "no cost".
 - Noise seeds 1 and 2 are reported as a check that the result does not depend on one draw of noise.
 
 ## Limitations

@@ -9,6 +9,8 @@ the four levels, each level weighted equally (Hendrycks and Dietterich 2019 aver
 The output is a valid input to compare_runs.py, whose accuracy is then the mean over levels and whose paired
 bootstrap gives the interval of the main comparison:
     python compare_runs.py --a A_s0_meanlevels.csv A_s1_... --b N_s0_meanlevels.csv N_s1_...
+Use with 2 or more seeds per setup. With one seed compare_runs.py prints a McNemar test, which counts only 0/1
+scores and so ignores averaged questions; do not use it on these files.
 """
 
 import argparse
