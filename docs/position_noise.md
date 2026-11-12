@@ -61,7 +61,7 @@ last checkpoint.
 | N | sigma 0.005 m on half the clips (D7) | The experiment |
 
 `bash ~/dl4cv/position_noise_seed.sh <seed> --with_tests` submits A and N as two jobs (about 3 hours of training
-each) and tests each run on clean inputs and at sigma 0.005, 0.01, 0.02 and 0.05 m with noise seeds 0, 1 and 2,
+each, then about 40 minutes of tests; the account queues 4 jobs, so two seeds at a time) and tests each run on clean inputs and at sigma 0.005, 0.01, 0.02 and 0.05 m with noise seeds 0, 1 and 2,
 through `eval_run.sh` (the standard 4-second test window). `bash ~/dl4cv/position_noise_seed.sh smoke` runs one
 epoch of N first, then one noisy test of it (sigma 0.005, noise seed 0), so the noisy test path is exercised
 before any full run; a seed is refused until that smoke run has finished on the deployed code revision.

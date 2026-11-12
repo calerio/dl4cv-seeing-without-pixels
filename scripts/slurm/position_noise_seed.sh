@@ -7,9 +7,10 @@
 #   bash ~/dl4cv/position_noise_seed.sh smoke                  one epoch of N, then one noisy test of it
 #   bash ~/dl4cv/position_noise_seed.sh <seed> [--with_tests] [--resume]
 # A seed is refused until the smoke run has finished on the deployed code revision.
-# With --with_tests each run gets 13 test jobs (eval_run.sh, 1 hour each) that start once its training has
-# finished: one on clean inputs (the standard test, comparable with the paper) and one per evaluation noise level
-# of D7 and noise seed 0, 1, 2. Each noisy test writes test_questions_<flags>.csv next to test_questions.csv.
+# Each seed is 2 jobs (the account may queue 4 and run 2 at once, so at most two seeds are queued at a time).
+# With --with_tests each job tests its run right after training, 13 times through eval_run.sh (about 3 minutes
+# each): once on clean inputs (the standard test, comparable with the paper) and once per evaluation noise level of
+# D7 and noise seed 0, 1, 2. Each noisy test writes test_questions_<flags>.csv next to test_questions.csv.
 # --resume lets a killed chain be resubmitted: existing runs continue from their last.ckpt (train.sh always
 # resumes), finished ones end at once; tests whose CSV exists are not run again.
 # Noise levels are in metres (Aria poses; checked on the stored files, see docs/position_noise.md).
@@ -30,9 +31,8 @@ if [ "${1:-}" = smoke ]; then
   S="--dataset egoexo4d_pretrain_longseq --pose_encoding rel9d_grav --take_duration 8 --sample_dur --epochs 1 \
 --seed 0 --val_every 1 --init_ckpt checkpoints/egoexo4d_dur8.pt"
   if ls -d ~/data/logs/*/pn_smoke_N >/dev/null 2>&1; then echo "refusing: pn_smoke_N exists; move it away first" >&2; exit 1; fi
-  j=$(sub smoke "bash ~/dl4cv/train.sh $S $NOISE --job_name pn_smoke_N" 01:00:00)
-  sbatch --parsable --dependency=afterok:$j ~/dl4cv/eval_run.sh pn_smoke_N \
-      --position_noise_eval_sigma $TRAIN_SIGMA --position_noise_eval_seed 0
+  sub smoke "bash ~/dl4cv/train.sh $S $NOISE --job_name pn_smoke_N && bash ~/dl4cv/eval_run.sh pn_smoke_N \
+--position_noise_eval_sigma $TRAIN_SIGMA --position_noise_eval_seed 0" 01:30:00
   exit 0
 fi
 
@@ -64,21 +64,20 @@ if [ -z "$resume" ]; then
   done
 fi
 
-train() {  # job name, extra flags; prints the job id
-  sub ${1#pn_} "bash ~/dl4cv/train.sh $BASE $2 --job_name $1" 05:00:00
-}
-tests() {  # job name, training job id: 13 test jobs that start after training
+run() {  # job name, extra flags: training, then the tests, in one job
   local d=~/data/logs/egoexo4d_pretrain_longseq/$1
-  [ -f $d/test_questions.csv ] || sbatch --parsable --dependency=afterok:$2 ~/dl4cv/eval_run.sh $1
-  for s in $EVAL_SIGMAS; do
-    for k in 0 1 2; do
-      local f="--position_noise_eval_sigma $s --position_noise_eval_seed $k"
-      local csv="$d/test_questions_$(echo "$f" | tr -c 'a-zA-Z0-9' '_' | sed 's/^_*//; s/_*$//').csv"  # as eval_run.sh
-      [ -f $csv ] || sbatch --parsable --dependency=afterok:$2 ~/dl4cv/eval_run.sh $1 $f
+  local cmd="bash ~/dl4cv/train.sh $BASE $2 --job_name $1"
+  if [ -n "$tests" ]; then
+    cmd="$cmd && { [ -f $d/test_questions.csv ] || bash ~/dl4cv/eval_run.sh $1; }"
+    for s in $EVAL_SIGMAS; do
+      for k in 0 1 2; do
+        local f="--position_noise_eval_sigma $s --position_noise_eval_seed $k"
+        local csv="$d/test_questions_$(echo "$f" | tr -c 'a-zA-Z0-9' '_' | sed 's/^_*//; s/_*$//').csv"  # as eval_run.sh
+        cmd="$cmd && { [ -f $csv ] || bash ~/dl4cv/eval_run.sh $1 $f; }"
+      done
     done
-  done
+  fi
+  echo "$cmd"
 }
-ja=$(train $A '')
-jn=$(train $N "$NOISE")
-echo "training: $A job $ja, $N job $jn"
-if [ -n "$tests" ]; then tests $A $ja; tests $N $jn; fi
+sub A_s$seed "$(run $A '')" 06:00:00
+sub N_s$seed "$(run $N "$NOISE")" 06:00:00
