@@ -60,7 +60,7 @@ PYSMOKE
  eval)
    [ "${POSITION_UNITS_CONFIRMED:-0}" = 1 ] || { echo 'Confirm position units first'; exit 1; }
    for setup in A N; do
-     python eval_position_noise.py "$base/${prefix}_${setup}_s${seed}" --sigmas 0 "$sigma" --noise-seeds 0 1 2
+          python eval_position_noise.py "$base/${prefix}_${setup}_s${seed}" --sigmas 0 0.005 0.01 0.02 0.05 --noise-seeds 0 1 2
    done
    ;;
  *) echo 'Expected smoke, train or eval'; exit 1;;
