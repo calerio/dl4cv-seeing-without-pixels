@@ -18,13 +18,14 @@ scores stay comparable with the paper's 44.81.
 No new data. The Ego-Exo4D training and test files and the released checkpoint already on the cluster.
 
 **Units and scale (checked 12 Nov 2026, `src/camformer/position_units_check.py`, 20 random training takes,
-seed 0).** Positions are in metres: all float64, all finite, unit quaternions, a clip moves 0.2 to 6.6 m in total.
+seed 0; output, take list and code revision in `results/position_units_check.txt`).** Positions are in metres: all float64, all finite, unit quaternions, a clip moves 0.2 to 6.6 m in total.
 The median step between stored frames ranges from 0.21 cm (cooking, a person standing at a counter) to 3.7 cm
 (basketball), median 1.44 cm over takes. Noise of sigma per coordinate on each frame puts noise of about
 sqrt(2) x sqrt(3) x sigma on each step: 1.2 cm at sigma 0.005 and 2.4 cm at 0.01. At the training level 0.005 the
-step noise is already larger than the median step in 7 of the 20 takes (the slow, mostly procedural ones); at 0.01
-in 13 of 20, and at 0.02 and above in all 20. Even the training level therefore buries the fine motion of slow
-takes, which is where the paper finds the trajectory weakest.
+step noise is already larger than the median step in 7 of the 20 takes (three cooking, one COVID test, one bike
+repair and two bouldering takes, so five of the seven are procedural activities); at 0.01 in 13 of 20, and at
+0.02 and above in all 20. Even the training level therefore buries the fine motion of slow takes, and procedural
+activities are where the paper's trajectory model scores lowest (Table 2, p. 6).
 
 ## Method
 In the dataset, after the clip's frames are chosen and before the usual conversion to relative poses
@@ -62,7 +63,8 @@ last checkpoint.
 `bash ~/dl4cv/position_noise_seed.sh <seed> --with_tests` submits A and N as two jobs (about 3 hours of training
 each) and tests each run on clean inputs and at sigma 0.005, 0.01, 0.02 and 0.05 m with noise seeds 0, 1 and 2,
 through `eval_run.sh` (the standard 4-second test window). `bash ~/dl4cv/position_noise_seed.sh smoke` runs one
-epoch of N first.
+epoch of N first, then one noisy test of it (sigma 0.005, noise seed 0), so the noisy test path is exercised
+before any full run; a seed is refused until that smoke run has finished on the deployed code revision.
 
 ## Table to fill
 Motion-to-text accuracy, overall and procedural, per seed and mean over the three seeds:
@@ -76,22 +78,25 @@ This table is descriptive: at each noise level the number is the mean over the t
 repeated measurements of the same model, not extra training runs. The claims rest only on the rule below.
 
 ## Reporting rule (fixed before any run)
-Written before any noisy test result existed: when the training level was changed from 0.01 to 0.005, only the
-smoke test had run, and it gives no accuracy.
+Written before any full run. The training level was changed from 0.01 to 0.005 before any job had run on this
+code. The smoke run does produce a one-epoch noisy accuracy; it only checks that the pipeline works, and nothing
+(training level, test levels or this rule) was chosen from it.
 - Main comparison: N against A on **mean accuracy over the four noise levels** (0.005, 0.01, 0.02, 0.05 m),
   noise seed 0, motion-to-text overall, with the paired bootstrap of `compare_runs.py` over seeds and recordings.
-  N is called more robust if the interval of the difference is above zero. This follows the standard protocol
+  This is a screening test: N is called more robust if the interval of the difference is above zero. With 3 seeds
+  only a gain of roughly 1.5 points or more is likely to be resolved (experiment 1's procedural intervals were about 2.5 points
+  wide); a smaller gain would be reported as not resolved, not as absent. This follows the standard protocol
   for corruption robustness (Hendrycks and Dietterich 2019), which scores a model across all severity levels of a
   corruption rather than at one chosen level, so no single level can be picked after the fact. Accuracy at each
   level, including the matched level 0.005, is reported as a curve without separate claims.
-- Clean cost: N against A on clean inputs, same test. N is said to keep clean accuracy only if the whole interval
-  lies above -1.0 point (the same bar as experiment 3). With 3 seeds an interval about 2 points wide is typical
-  (experiment 1), so a cost under 1 point may not be detectable; that is said if it happens.
+- Clean cost: N against A on clean inputs, same test, reported as the difference with its interval. If the
+  interval includes zero it is reported as "no cost resolved, within about ±1.5 points", not as "no cost".
 - Noise seeds 1 and 2 are reported as a check that the result does not depend on one draw of noise.
 
 ## Limitations
 - Independent noise on every frame is a simple stress test. Real tracking error is likely to be smoother (Meta's
-  Aria accuracy is a global error of whole trajectories, and Aria's open-loop error is described as drift), which
+  Aria accuracy is a global error of whole trajectories, and Engel et al. 2023 describe Aria's open-loop error as
+  accumulated drift), which
   would disturb frame-to-frame motion less; we have not measured its shape. Drift and tracking loss are not tested.
 - N is trained on the same kind of noise it is tested on, so this measures robustness to a known corruption,
   not to unseen ones (the corruption benchmark keeps its test corruptions out of training; Hendrycks and
@@ -99,7 +104,7 @@ smoke test had run, and it gives no accuracy.
 - Per-frame jitter is "one of the most commonly employed" augmentations for motion sensor data (Wu et al. 2025),
   and has been found not to help a wrist-accelerometer classifier (Um et al. 2017) and to hurt IMU-based pose
   estimation (Wu et al. 2025). It was chosen knowingly as the
-  standard, simplest perturbation.
+  simplest common perturbation.
 
 - Missing frames and rotation noise are not tested.
 

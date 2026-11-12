@@ -19,11 +19,11 @@ of sigma adds about 2.4 x sigma to each step between frames (1.2 cm at 0.005), a
 takes' fine motion, 0.5 cm still buries that of the slowest third. For scale, Meta reports Aria's closed-loop
 trajectories within "no more than 1.5 cm" global RMSE in room-scale scenes (Engel et al. 2023, arXiv:2308.13561),
 a whole-trajectory error rather than per-frame noise. The test levels make a sensitivity curve up to 0.05 m.
-Independent per-frame noise, the standard augmentation for motion sensors, was chosen knowingly over drift
-(references in `docs/position_noise.md`). The training level was changed from 0.01 to 0.005 before any noisy test
-result existed. Main comparison on mean accuracy over the four noise levels, as in the standard corruption-robustness protocol
-(Hendrycks and Dietterich 2019, arXiv:1903.12261), so no single level is chosen; clean cost judged against -1.0
-point.
+Independent per-frame noise, a common augmentation for motion sensors (Wu et al. 2025), was chosen knowingly over drift
+(references in `docs/position_noise.md`). The training level was changed from 0.01 to 0.005 before any job had run on
+this code. Main comparison on mean accuracy over the four noise levels, as in the standard corruption-robustness protocol
+(Hendrycks and Dietterich 2019, arXiv:1903.12261), so no single level is chosen; clean cost reported with its
+interval.
 
 **Effect on comparisons with the paper.** None on the clean test: A and N are tested on the standard benchmark
 without noise, comparable with 44.81. All noisy results are a separate experiment with no paper counterpart.
