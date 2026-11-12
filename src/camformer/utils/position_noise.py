@@ -1,6 +1,6 @@
 """Experiment 4: position-only perturbations before relative-pose conversion.
 
-Sigma is in raw position units, NOT assumed metres. No dataset files are changed.
+Sigma is in metres: Aria poses store positions in metres (checked on the stored files, docs/position_noise.md).
 """
 import hashlib
 import json
@@ -27,19 +27,17 @@ def perturb_positions(poses, sigma, rng, probability=1.0):
 
   No padding is present at this point. Quaternions, shape, dtype and caller input
   are preserved. Zero sigma/probability consumes no RNG, preserving defaults.
+  Non-finite poses pass through as they would on the clean path (noise added to
+  NaN stays NaN), so a noisy run never stops on a clip the clean run trains on.
   """
   validate_noise(sigma, probability)
   poses = np.asarray(poses)
   if poses.ndim != 2 or poses.shape[1] != 7 or not np.issubdtype(poses.dtype, np.floating):
     raise ValueError('expected floating (T,7) raw position/quaternion poses')
-  if not np.isfinite(poses).all():
-    raise ValueError('raw poses contain NaN or Inf')
   result = poses.copy()
   if sigma == 0 or probability == 0:
     return result
   if probability < 1 and rng.random() >= probability:
     return result
   result[:, :3] += rng.normal(0, sigma, size=(len(poses), 3)).astype(poses.dtype)
-  if not np.isfinite(result).all():
-    raise ValueError('position noise overflowed the input dtype')
   return result

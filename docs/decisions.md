@@ -3,32 +3,22 @@
 Choices that change how we run or compare experiments, with the reason for each. Newest first.
 Each one is meant to be cited in the report.
 
-## Extension 4: robustness to camera-position noise
+## D7. Experiment 4 adds noise to camera positions, sigma 0.01 m on half the training clips (12 Nov 2026)
 
-We will test whether position-noise augmentation improves CamFormer's
-robustness to simulated tracking errors, using existing Ego-Exo4D data.
-The architecture, captions, and rotations remain unchanged. Noise is
-added to raw positions before the existing relative-pose conversion.
+**Situation.** Experiment 4 (`docs/position_noise.md`) asks whether training on noisy positions makes the model
+more robust to noisy test positions. The paper never adds noise, so the choice of noise has no reference.
 
-Proposed protocol, pending confirmation that position coordinates are
-in metres:
-- Training noise: independent zero-mean Gaussian noise with standard
-  deviation 0.01 metres per coordinate, applied to 50% of training examples.
-- Evaluation noise standard deviations: 0, 0.005, 0.01, 0.02, and 0.05 metres.
-- Compare clean fine-tuning against noise-augmented fine-tuning, starting
-  from the same released checkpoint with matching training settings.
-- Use training seeds 0, 1, and 2, and identical evaluation disturbances
-  for both models.
+**Decision.** Gaussian noise, independent per frame and coordinate, added to raw x, y, z before the relative-pose
+conversion; rotations untouched. Training: standard deviation 0.01 m, on 50% of training clips. Testing: 0 (the
+standard test), 0.005, 0.01, 0.02 and 0.05 m, noise seeds 0, 1 and 2, the same noisy inputs for both models.
+Training seeds 0, 1 and 2; last checkpoint. Positions were checked to be in metres on the stored files (12 Nov).
 
-These levels define a controlled sensitivity experiment; they are not
-claimed to represent measured tracking-error distributions. Confirm units,
-convert settings if necessary, and freeze the protocol before final test
-evaluation. Run reproduction and HPC smoke checks before full training.
+**Why.** The levels make a controlled sensitivity curve around the training value; they are not a measured
+tracking-error distribution. 0.01 m is about one ordinary frame-to-frame step (median 0.9 to 3.4 cm), so it is
+large enough to matter without erasing the clip's overall path (1 to 3 m).
 
-Report clean accuracy and accuracy at each noise level. Compare the
-augmentation benefit against matched clean fine-tuning. Comparisons with
-the paper's original benchmark must use clean inputs and the matching
-evaluation protocol; corrupted-input results are a separate experiment.
+**Effect on comparisons with the paper.** None on the clean test: A and N are tested on the standard benchmark
+without noise, comparable with 44.81. All noisy results are a separate experiment with no paper counterpart.
 
 ## D6. Experiment 2 is run again, with each exo clip's own frame rate (4 Nov 2026)
 
@@ -221,5 +211,3 @@ against an uninterrupted run with the same settings (job 702054):
 The loss carries on from where it stopped rather than starting again. The small differences come from
 random data sampling, which is not seeded in the released code. The interrupted epoch was repeated in
 full, which cost about 8 minutes.
-
-

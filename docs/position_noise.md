@@ -1,91 +1,85 @@
-# Experiment 4: robustness to synthetic position measurement noise
+# Experiment 4: robustness to noise in the camera positions (design, 12 Nov 2026)
 
-Status: implementation and CPU tests only. No accuracy results, GPU tests, or real-data verification yet.
-Independent of experiments 1–3; starts from the released eight-second ego checkpoint.
+Written before any GPU job, following the same steps as experiments 1 to 3: the table to fill, the seeds, the
+reason for each choice and the reporting rule are fixed here (and in D7), and a review comes before the first run.
 
-## Question and scope
-Does fine-tuning with noisy camera positions improve five-way action matching under position measurement errors,
-without an unacceptable decrease on clean inputs? This measures synthetic robustness, not real tracking performance.
-No new dataset is required: use the existing Ego-Exo4D train and test CSVs, Aria NPZ poses and checkpoint on HPC.
+## Question
+Real camera tracking is never exact. Does fine-tuning CamFormer on positions with small random errors make it
+pick the right caption more often when the test positions are noisy too, without costing accuracy on clean inputs?
+This measures robustness to synthetic noise, not to any real tracking failure.
 
-The loader selects its existing window, copies raw (T,7) world poses, and perturbs only xyz before
-transform_camera_pose. Independent zero-mean Gaussian errors are drawn per frame and coordinate with standard
-deviation sigma. Quaternion columns are untouched; the normal relative-pose conversion still runs afterwards.
-The noisy middle-frame position also changes the relative translation origin: resulting relative errors are
-correlated, as expected when relative poses are formed from noisy absolute measurements. Rotations/gravity and
-caption/window indices remain unchanged. We do not reinterpret rotations as arbitrary numeric vectors.
+## What the paper did
+The paper always uses the stored Aria trajectories as they are. It reports results on estimated poses (Table 3,
+p. 6), but never adds noise on purpose. So this experiment has no reference number in the paper; the comparison
+is between our own runs, all starting from the released checkpoint. The clean test is the standard one, so clean
+scores stay comparable with the paper's 44.81.
 
-Sigma is in RAW STORED POSITION UNITS. Confirm units from Aria/source metadata or a known-distance check before
-calling sigma 0.01 'one centimetre'. The attached data_structure.md does not establish those units explicitly.
-Aria is the only supported pose source. Gaze, Pi3 and joint ego/exo training are deliberately rejected with noise.
-IID frame jitter is a simple stress test, not a realistic model of all drift or tracking loss. Large errors can
-obliterate the action signal; use small, justified values. Missing-frame and rotation perturbations are not included.
+## Data
+No new data. The Ego-Exo4D training and test files and the released checkpoint already on the cluster.
 
-## Controlled comparison
-- A: 20 epochs of clean fine-tuning from checkpoints/egoexo4d_dur8.pt.
-- N: same start, duration (8 s), batch (1024), learning rate (1e-4), epochs, code and seeds, with noise applied to
-  each sampled training window with probability 0.5. The other half remain clean in expectation.
-- Existing contrastive loss; no experiment-1 sampler, masks or within-take term.
-- Seeds 0,1,2 for training. Compare last completed checkpoints, never a validation-selected best checkpoint.
-- Validation is clean monitoring only. Validation recordings overlap benchmark test recordings: do not use
-  validation/test scores to select sigma, stop runs, or decide whether to continue after seeing a promising pilot.
-- Choose and record sigma and the evaluation plan BEFORE looking at final test scores. If settings need tuning,
-  implement a disjoint development split from training takes first; this patch does not add that split.
-- Evaluate each model on clean inputs and the same selected sigma with noise seeds 0,1,2. Evaluation perturbations
-  are keyed by SHA256(noise_seed, save_id, sampled frame indices), independent of batch and worker order and model.
-  Repeated rows of the same window get the same perturbation. Training uses a separate worker-local RNG, so adding
-  noise does not consume the RNG used to choose windows. Restarted training is reproducible to the same extent as
-  upstream sampling, not guaranteed bit-identical to an uninterrupted run.
-- Existing unmodified score_mcq.py provides motion-to-text primary and text-to-motion descriptive scores.
-- Report per-training-seed accuracy and differences for every condition. Three noise repeats are repeated
-  measurements of the same trained model, NOT nine independent training seeds. A simple prespecified primary
-  comparison can use noise seed 0 across training seeds via compare_runs.py; noise seeds 1,2 are sensitivity checks.
-  A mean over noise seeds requires an analysis that accounts for repeated questions, takes and training seeds.
-- Suggested decision to agree BEFORE evaluation: primary noisy m2t improvement with paired uncertainty above zero,
-  and clean deterioration no worse than an agreed practical tolerance. Do not call 'no clean harm' merely because
-  a difference is not statistically significant. No quantitative success rule is claimed to have been registered.
+**Units (checked 12 Nov 2026 on the stored files).** Positions are in metres: six random training takes are all
+float64, all finite, with unit quaternions; a clip moves 1 to 3 m in total, and the median step between stored
+frames is 0.9 to 3.4 cm (99th percentile 5 to 11 cm). So a noise of 0.01 is 1 cm per coordinate, about the size of
+one ordinary frame-to-frame step.
 
-## Added command-line options (train.py)
---position_noise_train_sigma FLOAT   default 0 (off)
---position_noise_probability FLOAT   default 0.5, per training window
---position_noise_eval_sigma FLOAT    default 0 (off), only with --test
---position_noise_eval_seed INT       default 0
+## Method
+In the dataset, after the clip's frames are chosen and before the usual conversion to relative poses
+(`transform_camera_pose`), independent Gaussian noise with standard deviation sigma is added to x, y and z of
+every frame. Rotations are untouched. Because the relative poses are taken from the noisy middle frame, the
+errors in the relative positions are correlated, as they would be with real noisy absolute positions.
 
-Evaluation does not infer noise from training options: clean and noisy evaluations must remain distinct.
-Noisy features get a sigma/seed subdirectory, preserving clean features. All defaults preserve the old input path.
-Resume rejects changed training noise sigma/probability as well as the existing revision/epoch guards.
+- **Training:** each sampled clip gets noise with probability 0.5. The noise has its own random generator, so
+  turning it on does not change which clips and windows are drawn.
+- **Testing:** the noise of a clip is fixed by (noise seed, clip id, frame indices), so A and N see exactly the
+  same noisy inputs, whatever the batching or number of workers.
+- **Validation** stays clean and is only watched, never used to choose anything (the test questions are built
+  from the validation takes).
+- Only the Aria ego setup; the flags are refused with gaze, Pi3 poses or other datasets.
 
-## What Valerio does
-1. Apply the supplied changes to the same repository revision (review extension4.patch). If the repository changed,
-   port/review the three edited files rather than overwriting newer code. Add and commit ALL new files before deploy;
-   scripts/deploy.sh does not fingerprint untracked files. Deploy using the existing scripts/deploy.sh workflow.
-2. Run CPU tests from repository root:
-   python -m unittest discover -s tests -p test_position_noise.py -v
-3. On HPC check actual NPZ shapes, floating dtype, finite xyz, units, CSV availability, and checkpoint location.
-   The public ZIP omits data_files; deployment assumes the cluster's existing data_files links are intact.
-4. From ~/dl4cv/camformer, create out/ and err/ before sbatch. For each seed run a ONE-EPOCH smoke job:
-   sbatch ../position_noise.sh smoke exp4_v1 0.01 0
-   Here 0.01 is an EXAMPLE raw-unit scale, not a justified final choice. Substitute the agreed sigma everywhere.
-   Smoke trains through the actual loader and saves a checkpoint; it does not inspect final test accuracy.
-5. Inspect smoke output: finite losses, full epoch, sensible xyz perturbation magnitude and unchanged rotations.
-   Once units/settings are agreed:
-   POSITION_UNITS_CONFIRMED=1 sbatch ../position_noise.sh train exp4_v1 0.01 0
-   Repeat smoke/train for seeds 1,2. Use the same committed revision and prefix/settings. Jobs run sequentially
-   within each allocation. If timed out, resubmit identical arguments; completed baseline may perform no new
-   updates before the augmented run resumes. Existing resume guards apply.
-6. After runs complete and the evaluation plan is fixed:
-   POSITION_UNITS_CONFIRMED=1 sbatch ../position_noise.sh eval exp4_v1 0.01 0
-   Repeat for seeds 1,2. This tests both A and N and writes question CSVs, summary CSVs, commands, logs and manifests
-   under ~/data/logs/egoexo4d_pretrain_longseq/exp4_v1_{A,N}_s*/position_noise_evaluation/.
-   Evaluations must run sequentially for a given run; concurrent duplicates share feature paths. The commands
-   refuse incomplete training checkpoints. Use new prefixes for genuinely new experiments.
-7. Run the existing released-checkpoint reproduction check on HPC with all noise options off. Expect 44.81 m2t.
-   This check has NOT been run here. Return output CSVs/logs for analysis, including negative results.
+Flags (`train.py`), all off by default:
 
-## Local verification and limitations
-Eight NumPy/SciPy/pandas CPU tests cover input immutability, quaternion preservation, disabled RNG behavior,
-noise magnitude, deterministic evaluation, actual loader method + real relative-pose transformation, clean
-validation, and training activation. Tests invoke the actual __getitem__ function on in-memory fixtures; they
-bypass disk I/O, DataLoader and Lightning. PyTorch/CLIP are unavailable in this workspace, so GPU training,
-checkpoint round trips, multi-worker execution, scoring and full reproduction remain HPC checks.
-Python syntax and shell syntax are checked locally. No full-training or accuracy claims are made.
+| Flag | Default | Meaning |
+|---|---|---|
+| `--position_noise_train_sigma` | 0 (off) | noise std on training clips, metres |
+| `--position_noise_probability` | 0.5 | fraction of training clips that get noise |
+| `--position_noise_eval_sigma` | 0 (off) | noise std at test time, with `--test` only |
+| `--position_noise_eval_seed` | 0 | which fixed test noise |
+
+## Runs
+Both runs fine-tune `egoexo4d_dur8.pt` with the authors' settings (learning rate 1e-4, batch 1,024, 8-second
+clips, sampled durations) for 20 epochs, seeds 0, 1 and 2, on the same code revision, and are tested from their
+last checkpoint.
+
+| Run | Training noise | Purpose |
+|---|---|---|
+| A | none (authors' setup) | Same extra training, so a gain is not just "more training" |
+| N | sigma 0.01 m on half the clips (D7) | The experiment |
+
+`bash ~/dl4cv/position_noise_seed.sh <seed> --with_tests` submits A and N as two jobs (about 3 hours of training
+each) and tests each run on clean inputs and at sigma 0.005, 0.01, 0.02 and 0.05 m with noise seeds 0, 1 and 2,
+through `eval_run.sh` (the standard 4-second test window). `bash ~/dl4cv/position_noise_seed.sh smoke` runs one
+epoch of N first.
+
+## Table to fill
+Motion-to-text accuracy, overall and procedural, per seed and mean over the three seeds:
+
+| Run | clean | 0.005 | 0.01 | 0.02 | 0.05 |
+|---|---|---|---|---|---|
+| A | | | | | |
+| N | | | | | |
+
+At each noise level the number is the mean over the three noise seeds; the noise seeds are repeated measurements
+of the same model, not extra training runs.
+
+## Reporting rule (fixed before any run)
+- Main comparison: N against A at sigma 0.01, noise seed 0, with the paired bootstrap of `compare_runs.py` over
+  seeds and recordings. N is called more robust if the interval of the difference is above zero.
+- Clean cost: N against A on clean inputs, same test. A drop is reported with its interval; "no harm" is not
+  claimed just because the interval includes zero.
+- The other noise levels and seeds are reported as a curve, without separate claims.
+
+## Limitations
+- Independent noise on every frame is a simple stress test, not a model of drift or tracking loss.
+- At 1 cm the noise is about as large as an ordinary step between frames, and 5 cm several times larger, so the
+  higher levels mostly test how much fine motion the model can lose.
+- Missing frames and rotation noise are not tested.
