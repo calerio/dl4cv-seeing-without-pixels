@@ -86,7 +86,7 @@ setups were trained again, seeds 0-2, with each clip's rate (`--exo_fps_table dy
 runs `ee2_{Sego,Sexo,EX,U0,U1}_s{0,1,2}`, `bash ~/dl4cv/ego_exo_seed.sh <seed> v2`, code 17a1a42 (regression check
 738231: `reproduction OK`; one-epoch smoke test 738195). Jobs 738234 (seed 0), 738235 (seed 2), 738236 and 738237
 (seed 1). All 15 runs finished their 20 epochs on 17a1a42. Every number below comes from
-`scripts/slurm/ego_exo_results.sh` (code 5246e3c), job 740932. Z with the rate table: job 740931.
+`scripts/slurm/ego_exo_results.sh` as in this commit (4825ad4), job 761251 on deployed code af6c5c5; it reproduces every number of the earlier job 740932. Z with the rate table: job 740931.
 
 Version 1 stays above for the record. As D6 fixes, version 2 is the experiment's result whatever it shows. The
 version 1 results, including the seed-0 pilot, were known when the rerun was decided; the rerun follows from the
