@@ -65,7 +65,9 @@ fi
 
 run() {  # job name, extra flags: training, then the tests, in one job
   local d=~/data/logs/egoexo4d_pretrain_longseq/$1
-  local cmd="bash ~/dl4cv/train.sh $BASE $2 --job_name $1"
+  # A finished run is not passed to train.sh again: resuming a run past its last epoch exits non-zero
+  # (seen 12 Nov, exit 120), which would stop the chain before its tests.
+  local cmd="{ python check_finished.py $d 2>/dev/null || bash ~/dl4cv/train.sh $BASE $2 --job_name $1; }"
   if [ -n "$tests" ]; then
     cmd="$cmd && { [ -f $d/test_questions.csv ] || bash ~/dl4cv/eval_run.sh $1; }"
     for s in $EVAL_SIGMAS; do
