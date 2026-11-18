@@ -1,0 +1,346 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+\usepackage{cvpr}
+\renewcommand{\ttdefault}{cmtt}
+\input{preamble}
+\usepackage{booktabs}
+\definecolor{cvprblue}{rgb}{0.21,0.49,0.74}
+\usepackage[breaklinks,colorlinks,allcolors=cvprblue]{hyperref}
+
+\def\paperID{20}
+\def\confName{CVPR}
+\def\confYear{2026}
+
+\title{What a Camera's Path Knows: Stress-Testing a Pixel-Free Activity Model}
+
+\author{Juan Ignacio Arguello \qquad Valerio Costa \qquad Facundo Lucero\\
+Bocconi University, 20600 Deep Learning for Computer Vision}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+CamFormer \cite{xue2026seeing} recognises what a person is doing from the path of their head-mounted camera alone,
+without any image. We reproduce its main result on Ego-Exo4D exactly (44.81\% five-way motion-to-text accuracy,
+where chance is 20\%) and test four changes. Each is fine-tuned from the released checkpoint, with three training
+seeds (one for gaze), and compared with a baseline. (1) Training against wrong answers from the
+same recording, through an extra loss term, raises accuracy on procedural activities such as cooking and repair
+from 33.4\% to 36.9\%. (2) One model trained on both first-person (Ego-Exo4D) and third-person (DynPose-100K)
+trajectories matches the first-person specialist; on third-person video it trails by 3.2 points, a gap our
+1,000-question test cannot resolve. (3) Eye gaze as a second input shows no confirmed gain. (4) Per-frame noise of
+up to 1\,cm on the camera positions leaves accuracy unchanged, and training with such noise brings no measurable
+gain. Code: \url{https://github.com/calerio/dl4cv-seeing-without-pixels}.
+\end{abstract}
+
+\section{Introduction}
+Picture a pair of smart glasses that records only where it is and which way it faces, thirty times a second, with no
+camera image and no audio. From that thin line through a room, can you tell whether the wearer is shooting a
+basketball, climbing a wall or fixing a bike?
+
+Xue et al.\ \cite{xue2026seeing} show that you often can. Their model, CamFormer, is a small
+Transformer (about 0.6\,M parameters\footnote{598,144 in the released checkpoint; the
+paper's Table 2 lists 0.3\,M.}) that reads a camera trajectory and maps it into the same space as a frozen
+CLIP text encoder \cite{radford2021clip}, so that a trajectory can be matched against written descriptions of what
+happens. On Ego-Exo4D \cite{grauman2024egoexo4d} it picks the right description out of five 44.8\% of the time.
+
+The authors are frank about where the idea strains (their supplementary 3.3). Step-by-step \emph{procedural}
+activities such as cooking or bike repair score far lower than sports, because the camera motion is subtle and local. And
+first-person and third-person cameras get separate models. We took those limits as our starting points and asked
+how far a pixel-free model can be pushed. Our contributions:
+\begin{itemize}
+\item An exact reproduction of the main result from the released code and checkpoints (Sec.~\ref{sec:repro}).
+\item \textbf{Harder wrong answers} in training, drawn from the same recording, which improve procedural accuracy
+by 3.5 points (Sec.~\ref{sec:hn}).
+\item \textbf{One model for both viewpoints}, which matches the first-person specialist but leaves the
+third-person comparison unresolved (Sec.~\ref{sec:egoexo}).
+\item \textbf{Eye gaze} as a second input, with no confirmed gain (Sec.~\ref{sec:gaze}).
+\item \textbf{Noise on the camera positions}, which leaves accuracy unchanged up to 1\,cm of noise per
+coordinate (Sec.~\ref{sec:noise}).
+\end{itemize}
+We wrote down each comparison's rule before reading its result, with two exceptions. In the hard-negatives
+experiment the rule was written after we had seen the first seed's test score, and the design itself followed an
+earlier run's test score (Sec.~\ref{sec:hn}). In the two-viewpoint experiment the corrected rerun was decided after
+the first round's results were known, although the rule it is judged by was fixed before any run
+(Sec.~\ref{sec:egoexo}). All numbers come from code in our repository.
+
+\section{Related Work}
+\label{sec:related}
+\paragraph{Activity from motion, without pixels.} Head and camera motion has long been used to recognise
+first-person activity; Kitani et al.\ \cite{kitani2011fast} cluster the egomotion of sports videos into actions
+without labels. IMU2CLIP \cite{moon2022imu2clip} trains a motion-sensor encoder against frozen CLIP encoders so that
+sensor signals can be matched with text. CamFormer \cite{xue2026seeing} applies the same contrastive idea to
+camera trajectories, and is the model we study.
+
+\paragraph{Hard negatives.} InfoNCE \cite{oord2018cpc} and CLIP \cite{radford2021clip} use the rest of the batch as
+wrong answers. Robinson et al.\ \cite{robinson2021hard} show that negatives similar to the anchor give better
+representations. For egocentric video, EgoNCE \cite{lin2022egovlp} adds clips from the same video and close in time
+as extra negatives, and treats clips that share a verb and a noun as positives. Our within-recording loss follows
+the same intuition for trajectories, as a separate loss term, and our verb rule removes same-verb pairs from the negatives, a
+milder version of EgoNCE's positives.
+
+\paragraph{First and third person.} Ego-Exo \cite{li2021egoexo} transfers video representations from third-person
+to first-person video, and Ego-Exo4D \cite{grauman2024egoexo4d} films the same activities from both views. We ask
+whether one model can serve both views for camera trajectories, where the two views differ in sensor, scale and frame rate.
+
+\paragraph{Gaze and robustness.} Li et al.\ \cite{li2018eye} model gaze and actions together in first-person video
+and report that gaze helps recognition. For robustness we follow Hendrycks and Dietterich
+\cite{hendrycks2019corruptions}, who average accuracy over several corruption levels.
+
+\section{Methodology}
+\label{sec:method}
+\paragraph{CamFormer.} The model turns each camera pose into a token (position relative to the clip's middle frame
+plus a rotation, with gravity direction known for Aria), adds a position embedding and passes the sequence through
+a 4-layer Transformer (width 128, 4 heads). The output for the labelled window is a single vector $m$. The caption
+goes through a frozen CLIP text encoder, giving $t$. Both are normalised to unit length.
+
+\paragraph{Batch loss.} For a batch of $N$ clip--caption pairs, the authors train with the symmetric InfoNCE loss,
+with similarity $s_{ij} = m_i^\top t_j / \tau$ and $\tau = 0.07$:
+\begin{equation}
+\textstyle\mathcal{L}_{\text{batch}} = -\frac{1}{2N}\sum_{i=1}^{N}\left[\log\frac{e^{s_{ii}}}{\sum_{j\in\mathcal{N}_i} e^{s_{ij}}}
++ \log\frac{e^{s_{ii}}}{\sum_{j\in\mathcal{N}_i} e^{s_{ji}}}\right].
+\label{eq:batch}
+\end{equation}
+In the authors' setup $\mathcal{N}_i$ is the whole batch. With our verb rule (setup C and later), $\mathcal{N}_i$
+leaves out every other pair whose caption has the same main verb as caption $i$, so that two clips of ``cuts the
+onion'' are not pushed apart.
+
+\paragraph{Within-recording loss.} Our extra term (Sec.~\ref{sec:hn}) has the same form, but each pair competes
+only with pairs from its own recording $r(i)$ whose main verb $v$ differs:
+\begin{equation}
+\mathcal{N}^{\text{take}}_i = \{i\} \cup \{\, j : r(j) = r(i),\ v(j) \neq v(i) \,\},
+\end{equation}
+and pairs with no such competitor are left out. The training loss is
+$\mathcal{L} = \mathcal{L}_{\text{batch}} + \lambda\,\mathcal{L}_{\text{take}}$ with $\lambda = 1$.
+
+\paragraph{Extra inputs.} Two experiments add an input to the token sequence, both through layers that start at
+zero, so that the released model is unchanged at the start of training. For the joint model (Sec.~\ref{sec:egoexo})
+the domain token is one learned vector per camera type (ego or exo), added to every token. For gaze
+(Sec.~\ref{sec:gaze}) a linear layer maps four numbers per frame (gaze yaw, pitch, log depth and a validity flag)
+to the token width, and the result is added to that frame's token.
+
+\paragraph{Position noise.} For Sec.~\ref{sec:noise}, each frame's position $p_t$ is replaced by
+$p_t + \epsilon_t$ with $\epsilon_t \sim \mathcal{N}(0, \sigma^2 I_3)$, independently per frame, before the
+relative positions are computed; rotations are untouched.
+
+\section{Datasets}
+\label{sec:data}
+No video enters any of our models: we use only the camera trajectories, captions and eye gaze that the authors and
+Ego-Exo4D release.
+
+\paragraph{Ego-Exo4D (first person).} People wearing Aria glasses do activities such as basketball, climbing, dancing, cooking, bike repair
+and health procedures (for example a COVID test). The glasses' own tracking gives metric camera poses, which
+the authors resample to 20 per second. Each training example pairs a window of up to 8\,s of trajectory with one
+narration of what the wearer does at that moment, 159,186 pairs in all. The test has 7,079 five-way questions from
+671 recordings (2,621 procedural, 4,458 physical), built from the validation recordings; for this reason we never
+use validation to choose anything. For the gaze experiment we use Ego-Exo4D's eye-gaze recordings.
+
+\paragraph{DynPose-100K (third person).} Ordinary internet videos whose camera poses were estimated from the
+images, here with ViPE, so their scale is only approximate and there is no gravity direction. After the authors'
+filter on pose scale, 88,151 clip--caption pairs remain for training; the test has 1,000 five-way questions.
+
+\paragraph{Nymeria (zero-shot only).} Four sets of 1,000 questions about body posture, hands and arms, legs and
+feet, and focus of attention, which we use only to check whether a change transfers to data the model was not
+trained on.
+
+\paragraph{Task.} Each test question shows one trajectory clip and five captions; the model must pick the caption
+that describes the clip (motion-to-text). The wrong captions come from the same recording but describe a different
+action, which makes the test hard: the setting, the person and the style of movement are all shared. Accuracy is
+reported overall and split into \emph{physical} (sports, dance) and \emph{procedural} (cooking, repair, health)
+activities.
+
+\begin{table}[t]
+\centering\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lccc}
+\toprule
+ & Poses from & Train pairs & Test qs. \\
+\midrule
+Ego-Exo4D & Aria glasses & 159,186 & 7,079 \\
+DynPose-100K & ViPE, from video & 88,151 & 1,000 \\
+Nymeria & Aria glasses & -- & $4\times1{,}000$ \\
+\bottomrule
+\end{tabular}
+\caption{Datasets. Aria poses are metric; ViPE poses are estimated from video. All test questions are five-way; chance is 20\%.}
+\label{tab:data}
+\end{table}
+
+\section{Experiments and Results}
+\label{sec:exp}
+\paragraph{Protocol.} Every experiment fine-tunes the authors' released 8-second checkpoint for 20 epochs with
+their settings (learning rate $10^{-4}$, batch 1,024), always against a baseline that receives the same extra
+training without our change, so that a gain is not just ``more training''. Each setup is trained with three seeds, except the gaze runs (one seed, Sec.~\ref{sec:gaze}).
+Differences are tested with a paired two-level bootstrap that resamples training seeds and then test recordings
+(not questions, since questions from one recording are correlated), 10,000 times, and we report 95\% intervals.
+With only three seeds this interval is rough, so we also quote per-seed numbers where a claim rests on them.
+
+\subsection{Reproduction}
+\label{sec:repro}
+From the released features the Ego-Exo4D test gives 44.81\% motion-to-text, matching the paper's 44.8. Running
+the released checkpoint end to end on our cluster gives the same 44.81\% (procedural 33.61\%). The DynPose-100K
+figure with ViPE poses (46.3) and all four zero-shot Nymeria figures also match. One number does not: DynPose with
+the dataset's own poses gives 39.2 from the released features, against 36.2 in the paper. We re-ran the 44.81
+check before every new batch of training, as a guard against silent changes to the code.
+
+\subsection{Same-recording wrong answers}
+\label{sec:hn}
+Training and test disagree about what a wrong answer looks like. At test time, the wrong captions come from the \emph{same} recording:
+same person, same kitchen, different step. In training, as is standard for contrastive models, the wrong answers
+are simply the other clips in the batch, drawn from the whole dataset. With a batch of 1,024, only about one of
+the 1,023 wrong answers comes from the same recording; we call such same-recording wrong answers \emph{hard negatives}. The model practises telling cooking from basketball, then
+gets tested on telling ``cuts the onion'' from ``stirs the pot''.
+
+We close the gap in two steps. First, batches are filled with groups of eight clips from the same recording,
+at least 4\,s apart, so that hard negatives are present (the spacing holds within a group; two groups from one recording can land in the same batch). Second, an extra loss term (weight 1) contrasts each clip only
+against the other clips of its own recording. In both losses, a clip whose caption has the same main verb is not used as a wrong answer, so that a repeated
+action is not punished (Sec.~\ref{sec:method}). We call this setup B$'$, and
+compare it with the authors' setup (A), with the verb rule alone (C), and with the grouping but no extra loss (G).
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{lccc}
+\toprule
+Setup & Procedural & Physical & Overall \\
+\midrule
+Released model & 33.61 & 51.39 & 44.81 \\
+A (authors' setup) & 33.36 & 51.87 & 45.01 \\
+C (verb rule only) & 33.41 & 52.01 & 45.12 \\
+G (grouping only) & 33.73 & 51.90 & 45.17 \\
+B$'$ (grouping + loss) & \textbf{36.91} & \textbf{53.39} & \textbf{47.29} \\
+\bottomrule
+\end{tabular}
+\caption{Same-recording negatives, mean of three seeds, motion-to-text accuracy (\%).}
+\label{tab:hn}
+\end{table}
+
+B$'$ beats the baseline on procedural questions by +3.55 points (95\% interval +2.37 to +4.83) and wins in every
+seed (37.09, 36.44, 37.20 against 33.27, 33.61, 33.19), Table~\ref{tab:hn}. It also gains on physical activities
+(+1.53, +0.31 to +2.64), so the procedural gain does not come at their expense. The verb rule alone has no measurable
+effect (C$-$A overall +0.11, $-$0.57 to +0.74).
+
+The run with grouping but no extra loss (G) shows where the gain comes from. G is indistinguishable from C on procedural questions
+(+0.32, $-$0.60 to +1.23), while B$'$ beats G by +3.18 (+1.95 to +4.49). Putting hard negatives in the batch is not enough on its own, because in the standard loss they are a handful among
+a thousand; we measured that they carry under 3\% of the weight on negatives. The extra term needs the grouping to
+have pairs to work on, and the grouping does little without the term.
+
+The gain shows in the motion-to-text direction only: in text-to-motion (a caption picks among
+five trajectories) B$'-$A is +0.74 on procedural with an interval that includes zero, although both loss terms are
+symmetric; we did not find out why. And it does not transfer zero-shot to Nymeria, where every interval includes
+zero. B$'$ trains on the same construction the test uses, so part of the gain may be specific to this test format.
+The design also followed a test result: the move from grouping alone to B$'$ came after grouping alone scored
+44.84 on the test (an earlier, unseeded run with a different negative mask, not G).
+
+\subsection{One model for both viewpoints}
+\label{sec:egoexo}
+CamFormer comes as two models: one for first-person (ego) trajectories from Aria glasses, one for third-person
+(exo) trajectories estimated from ordinary videos (DynPose-100K). We trained a joint model
+on both datasets without (U0) and with (U1) a domain token telling it which kind of camera it is reading, and
+compared it with an ego specialist (S-ego), an exo specialist (S-exo), and E$\to$X, the ego model fine-tuned on exo
+data only, which shares the joint model's inputs and starting weights.
+
+A first round of runs fed every exo clip as if it were filmed at 30 frames per second; judging from the number of
+poses per clip, about a third are at 24 or 25. We fixed this and retrained all five setups; the numbers below are from the corrected round. None of the
+version-to-version differences was resolved.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{lcc}
+\toprule
+Setup & Ego test & Exo test \\
+\midrule
+S-ego (ego specialist) & 44.99 & -- \\
+S-exo (exo specialist) & -- & 46.53 \\
+E$\to$X (exo only, from ego) & 32.58 & 46.37 \\
+U0 (joint, no token) & 45.29 & 43.87 \\
+U1 (joint, domain token) & 45.02 & 43.33 \\
+\bottomrule
+\end{tabular}
+\caption{One model for two viewpoints, mean of three seeds, motion-to-text (\%). Ego: Ego-Exo4D, 7,079 questions;
+exo: DynPose-100K, 1,000 questions.}
+\label{tab:egoexo}
+\end{table}
+
+On first-person video the joint model matches the specialist: U1$-$S-ego is +0.03 ($-$0.61 to +0.68), well inside the
+$\pm$1.5 margin we set in advance. On third-person video it is 3.2 points behind the specialist ($-$6.49 to +0.20).
+The interval includes zero, but it also includes a gap of more than six points, so we cannot claim the joint model
+matches. With only 1,000 exo questions and seed-to-seed swings of up to four points (U1: 41.7 to 45.8), this test
+cannot resolve differences of that size. The domain token adds nothing measurable (U1$-$U0 on exo $-$0.53,
+$-$3.61 to +2.78).
+
+The largest gap in the table is a side effect. After training on exo data alone, E$\to$X drops from about 45 to 32.6 on
+the ego test: it forgets the first-person skill it started with. The joint models, which also see ego data, stay at about 45.
+
+\subsection{Eye gaze as a second input}
+\label{sec:gaze}
+Aria glasses also record where the eyes look. This looked promising for procedural tasks, where the head may stay still
+while the eyes move from the knife to the onion. We added gaze as a second input in two ways, keeping the released
+encoder frozen and training only a gaze layer (GF), or training everything (GT), each with a control that receives
+gaze from a different moment or person (``shuffled'').
+
+A pilot gate on training data, fixed in advance, was not met, so only one seed was trained and no claim is made.
+On procedural questions all four single-seed comparisons include zero (GT against no gaze: +0.72, $-$0.39 to
++1.84). The point estimates are positive, so the question stays open, but this is no evidence that gaze helps. We
+also could not verify the alignment of gaze and pose in time, so the fair summary is ``no gain with gaze as
+aligned here''.
+
+\subsection{Noise on the camera positions}
+\label{sec:noise}
+Camera tracking always has some error. We asked two questions: how much accuracy CamFormer loses when the
+positions it reads are slightly wrong, and whether training on noisy positions reduces that loss. We added independent Gaussian noise to the $x$, $y$ and $z$ of every frame, at standard
+deviations of 0.5, 1, 2 and 5\,cm per axis, and compared the authors' setup (A) with a model trained with 0.5\,cm
+noise on half its clips (N). Following the standard protocol for corruption robustness
+\cite{hendrycks2019corruptions}, the main comparison is accuracy averaged over all four levels, fixed before the
+runs.
+
+\paragraph{Why 0.5\,cm, and what it is not.} We chose the training level to match the accuracy Meta reports for
+Aria trajectories, a global error of no more than 1.5\,cm in room-scale scenes \cite{engel2023aria}: 0.5\,cm on
+each axis is about 0.9\,cm in 3D. We were aware that this matches the \emph{size} of real error but not its
+\emph{shape}. Aria's figure is an error of whole trajectories, and its uncorrected error is described as drift
+that accumulates \cite{engel2023aria}, which is smooth, whereas our noise is independent on every frame. Per-frame
+jitter is one of the most common augmentations for motion sensors \cite{wu2025moda}, but it has been found not to
+help a wrist-sensor classifier \cite{um2017augmentation} and to hurt pose estimation from body-worn sensors
+\cite{wu2025moda}. We chose it knowingly, as the simplest common perturbation, and treat the result as a stress
+test of the model rather than a simulation of real tracking failure. N is also tested on the same kind of noise it was trained on, which
+the corruption benchmark avoids \cite{hendrycks2019corruptions}.
+
+\begin{table}[t]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccccc}
+\toprule
+ & clean & 0.5\,cm & 1\,cm & 2\,cm & 5\,cm \\
+\midrule
+A & 44.93 & 44.80 & 44.91 & 44.28 & 39.71 \\
+N & 44.89 & 44.91 & 44.95 & 44.70 & 39.89 \\
+\bottomrule
+\end{tabular}
+\caption{Accuracy (\%) under position noise per axis, overall, mean of three seeds and three noise draws.}
+\label{tab:noise}
+\end{table}
+
+On the second question no gain shows: averaged over the four levels, N is ahead of A by only +0.21 ($-$0.08 to +0.51), and
+no cost on clean inputs is resolved either ($-$0.03, $-$0.44 to +0.38). The interval is narrow, so any gain above about half
+a point would probably have shown.
+
+On the first question (Table~\ref{tab:noise}), without any special training, accuracy
+does not move up to 1\,cm of noise, and slips by less than a point at 2\,cm, even though the noise is
+large next to the motion. In a sample of 20 training recordings the median distance the camera moves between frames ranges from
+0.2\,cm (a person standing at a kitchen counter) to 3.7\,cm (basketball); at 1\,cm per axis the noise on each
+frame-to-frame step is about 2.4\,cm, larger than the median step in 13 of the 20. In the slowest takes the noise
+is many times the motion, yet accuracy holds. Only at 5\,cm does accuracy fall, by about five points.
+
+Our reading, which this experiment does not test directly, is that CamFormer relies less on the fine motion
+between frames than on the larger shape of the path over seconds, such as the head crossing a room or bending down to a counter. Independent jitter averages out over a clip; walking across a room does not. Smooth, drifting
+noise would attack exactly that shape, and is the natural next test.
+
+\section{Conclusions}
+A camera's path alone says a lot about what its wearer is doing, and the model that reads it held up better than we
+expected. The one change that clearly helped was to train the way the test asks: against wrong answers from the
+same recording, with a loss that makes them count. Merging viewpoints works for first-person video but leaves an
+unresolved question on third-person video, gaze shows no confirmed gain, and centimetre-level jitter barely moves
+the accuracy. If the next test, smooth drifting noise, hurts the model where per-frame jitter did not, that would confirm that it
+reads the shape of the path over seconds rather than its frame-to-frame detail.
+
+{\small
+\bibliographystyle{ieeenat_fullname}
+\bibliography{refs}
+}
+\end{document}
