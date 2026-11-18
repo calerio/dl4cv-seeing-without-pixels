@@ -2,6 +2,21 @@
 
 What was done, by date. Newest first. Plans are in [`SCHEDULE.md`](SCHEDULE.md).
 
+## Wed 18 Nov 2026
+- Report draft restructured into the sections the course asks for (abstract, introduction, related work,
+  methodology, datasets, experiments and results, conclusions); LaTeX source and PDF in [`report/`](report/).
+- Repository prepared for public release: new README with a results summary, licence at the root, empty
+  placeholder folders removed, automated pull-request review workflows limited to collaborators.
+- Code audit checked against the cluster outputs: every test job scored the intended test clips, all experiment 1
+  models were tested at their final epoch, and tied scores change accuracy by at most 0.04 points, equally in
+  every run.
+
+## Sat 14 Nov 2026
+- Experiment 4 finished ([`results/position_noise.md`](results/position_noise.md)): accuracy holds up to 1 cm of
+  per-frame position noise; training with noise gives no measurable gain (+0.21, interval -0.08 to +0.51).
+- Experiment 2, version 2 (rerun with corrected frame rates, D6) results ([`results/ego_exo.md`](results/ego_exo.md)): the joint model matches the ego
+  specialist; the exo comparison stays unresolved.
+
 ## Wed 4 Nov 2026
 - Follow-ups to experiment 1 finished ([`results/followups.md`](results/followups.md)). The within-take loss term
   carries the gain: B' beats G (grouping without the term) by 3.18 points on procedural questions (interval +1.95 to
