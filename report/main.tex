@@ -126,8 +126,8 @@ relative positions are computed; rotations are untouched.
 No video enters any of our models: we use only the camera trajectories, captions and eye gaze that the authors and
 Ego-Exo4D release.
 
-\paragraph{Ego-Exo4D (first person).} People wearing Aria glasses do activities such as basketball, climbing, dancing, cooking, bike repair
-and health procedures (for example a COVID test). The glasses' own tracking gives metric camera poses, which
+\paragraph{Ego-Exo4D (first person).} People wearing Aria glasses do one of eight activities: basketball, soccer, rock climbing, dancing, playing music, cooking, bike repair
+and health procedures (a COVID rapid test or CPR). The glasses' own tracking gives metric camera poses, which
 the authors resample to 20 per second. Each training example pairs a window of up to 8\,s of trajectory with one
 narration of what the wearer does at that moment, 159,186 pairs in all. The test has 7,079 five-way questions from
 671 recordings (2,621 procedural, 4,458 physical), built from the validation recordings; for this reason we never
@@ -144,7 +144,7 @@ trained on.
 \paragraph{Task.} Each test question shows one trajectory clip and five captions; the model must pick the caption
 that describes the clip (motion-to-text). The wrong captions come from the same recording but describe a different
 action, which makes the test hard: the setting, the person and the style of movement are all shared. Accuracy is
-reported overall and split into \emph{physical} (sports, dance) and \emph{procedural} (cooking, repair, health)
+reported overall and split into \emph{physical} (sports, dance, music) and \emph{procedural} (cooking, repair, health)
 activities.
 
 \begin{table}[t]
@@ -186,7 +186,7 @@ Training and test disagree about what a wrong answer looks like. At test time, t
 same person, same kitchen, different step. In training, as is standard for contrastive models, the wrong answers
 are simply the other clips in the batch, drawn from the whole dataset. With a batch of 1,024, only about one of
 the 1,023 wrong answers comes from the same recording; we call such same-recording wrong answers \emph{hard negatives}. The model practises telling cooking from basketball, then
-gets tested on telling ``cuts the onion'' from ``stirs the pot''.
+gets tested on telling ``C places the jar of salt in the kitchen cabinet'' from ``C wipes the skillet with the kitchen towel'' (a real test question; C is the camera wearer).
 
 We close the gap in two steps. First, batches are filled with groups of eight clips from the same recording,
 at least 4\,s apart, so that hard negatives are present (the spacing holds within a group; two groups from one recording can land in the same batch). Second, an extra loss term (weight 1) contrasts each clip only
