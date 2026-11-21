@@ -95,13 +95,13 @@ captions sharing the same main action verb from the negative comparisons. This e
 misleading comparisons without explicitly treating those clips as additional positive pairs.
 
 \subsection{Learning across viewpoints}
-First- and third-person recordings provide different relationships between camera movement and activity. A worn
-camera moves with the actor, whereas an observer's camera reflects how the activity is being filmed.
+A head-mounted camera moves with the person doing the activity; a camera filming them from outside moves however
+the operator chooses. The same action can therefore leave very different paths.
 
-Previous work has transferred visual representations between these viewpoints \cite{li2021egoexo}, and Ego-Exo4D
-provides recordings of activities from both perspectives \cite{grauman2024egoexo4d}. Our question concerns
-trajectory representations: whether one model can retain performance across two datasets whose camera poses also
-differ in source, scale, and sampling rate.
+Ego-Exo \cite{li2021egoexo} transfers video features from third-person to first-person video, and Ego-Exo4D
+\cite{grauman2024egoexo4d} films the same activities from both sides. We ask the question for trajectories: can one
+model handle both, when the two datasets also differ in where the poses come from, their scale and their frame
+rate?
 
 \subsection{Gaze as complementary information}
 Camera orientation describes head movement, but it does not fully determine where the wearer looks. Eye movements
@@ -499,24 +499,22 @@ useful follow-up because it changes the trajectory's structure over time rather 
 independently.
 
 \section{Conclusions}
-Our experiments show that the usefulness of camera trajectories depends on both the information they contain and
-the comparisons used to learn from them.
+A camera's path alone says a lot about what its wearer is doing, and CamFormer held up better than we expected.
 
-The strongest improvement comes from emphasising different actions within the same recording. Combining grouped
-batches with an additional contrastive loss raises procedural motion-to-text accuracy by 3.5 percentage points, in
-every seed. The controls indicate that grouping and verb masking alone do not explain this gain. However, the
-absence of a resolved gain in text-to-motion retrieval and in Nymeria transfer, and the test-informed development
-process, limit broader claims.
+The one change that clearly helped was to train the way the test asks: against wrong answers from the same
+recording, with a loss that makes them count. That raised procedural accuracy by 3.5 points, in every seed, and
+neither the grouping nor the verb rule did it on its own. We would not claim more than that. Text-to-motion and
+Nymeria did not move, and the design was shaped partly by test scores we had already seen.
 
-The remaining experiments establish boundaries rather than additional improvements. Joint training retains
-first-person performance, but the third-person comparison remains uncertain. Gaze provides no confirmed benefit in a
-configuration limited by alignment and single-seed evaluation. Finally, the model tolerates small independent
-position errors without special training, while noise augmentation adds no measurable benefit.
+The other three experiments did not give us a better model, but each told us something. One model can serve
+first-person video without loss, while on third-person video our 1,000-question test is too small to say. Gaze, as
+we aligned it and with one seed, showed no gain. And centimetre-level jitter barely moves the accuracy, so
+training against it has little to fix.
 
-These findings identify targeted training comparisons as a productive modification and motivate further
-investigation of gaze alignment, cross-domain variability, and temporally structured tracking errors. They should be
-interpreted within the published benchmark, including its inherited overlap between checkpoint-selection recordings
-and evaluation recordings.
+Two follow-ups seem most useful: gaze with verified alignment and more seeds, and smooth drifting noise. If drift
+hurts the model where jitter did not, that would support our guess that it reads the shape of the path over seconds
+rather than its frame-to-frame detail. All of this holds for the published benchmark, whose test recordings also
+served, before us, to pick the released checkpoint.
 
 {\small
 \bibliographystyle{ieeenat_fullname}
