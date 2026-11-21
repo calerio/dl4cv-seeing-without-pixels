@@ -74,11 +74,7 @@ Movement can reveal activity even when appearance information is limited. Kitani
 discover patterns in first-person sports videos \cite{kitani2011fast}. More recently, IMU2CLIP learned to associate
 motion-sensor recordings with language and video through a shared representation \cite{moon2023imu2clip}. Its
 central principle is that a movement encoder can learn useful meaning by aligning its outputs with representations
-from pretrained models.
-
-CamFormer applies this principle to camera trajectories \cite{xue2026seeing}. It learns a motion representation
-compatible with the text representations produced by CLIP \cite{radford2021clip}. Our work builds on the released
-model and examines changes to its training comparisons and inputs.
+from pretrained models. CamFormer applies this principle to camera trajectories \cite{xue2026seeing}.
 
 \subsection{Choosing informative training comparisons}
 Contrastive learning trains a model to distinguish matching examples from mismatched ones. In CLIP, for example, an
@@ -137,13 +133,10 @@ additional reference indicating the direction of world-down in the reference cam
 
 The model projects each nine-dimensional pose into a 128-dimensional token, a vector representing one moment.
 Gravity is projected separately and added as a token at the beginning of the sequence. Positional encodings
-identify temporal order, allowing the model to distinguish sequences containing similar movements in different
-orders.
+identify temporal order.
 
-Four Transformer layers with four attention heads combine information across moments through self-attention. This
-allows the representation of a short movement to depend on its surrounding context. For example, lowering the
-camera may have a different interpretation when preceded by walking towards a work surface than when embedded in
-repeated jumping.
+Four Transformer layers with four attention heads combine information across moments through self-attention. Lowering the camera can then mean one thing after
+walking to a work surface and another in the middle of repeated jumping.
 
 The resulting frame representations are projected into 512 dimensions. Their average over the labelled action
 interval forms the motion embedding, a vector summarising the action. The surrounding window provides context
@@ -153,8 +146,7 @@ through attention, while the averaging interval identifies the action being desc
 A pretrained CLIP text encoder converts the corresponding caption into a 512-dimensional text embedding. Its
 weights remain frozen, so training adjusts CamFormer to produce compatible motion representations.
 
-Both embeddings are normalised to unit length. Their dot product is therefore cosine similarity: a higher value
-indicates a stronger match between the trajectory and description. For motion embedding $m_i$ and text embedding
+Both embeddings are normalised to unit length, so their dot product is cosine similarity. For motion embedding $m_i$ and text embedding
 $t_j$, the training score is
 \begin{equation}
 s_{ij} = \frac{m_i^\top t_j}{\tau},
@@ -257,9 +249,7 @@ description with the highest embedding similarity. Chance accuracy is 20\%.
 On Ego-Exo4D, incorrect descriptions come from the same recording but describe different actions. Consequently,
 recognising the broader activity is insufficient: the model must distinguish steps performed by the same person in
 the same setting.
-
-No video frames enter our recognition models, although the third-person trajectories are themselves estimated from
-video.
+No video frames enter our models, although the third-person trajectories are themselves estimated from video.
 
 \begin{table}[t]
 \centering\small
@@ -322,10 +312,8 @@ released checkpoint end to end on our cluster produces the same result, includin
 
 The released DynPose-100K result using ViPE poses (46.3\%) and all four Nymeria results also match. One discrepancy
 remains: DynPose-100K with its original poses scores 39.2\% from the released features, compared with 36.2\% in the
-paper.
-
-Before each new batch of training, we repeat the main checkpoint evaluation to check that code changes preserve the
-original result. This reproduces evaluation from released weights rather than the original training process.
+paper. We repeated the 44.81\% check before each new batch of training, as a guard against silent code changes. This
+reproduces evaluation from released weights, not the original training.
 
 \subsection{Emphasising same-recording alternatives}
 \label{sec:hn}
@@ -385,10 +373,6 @@ handling. Ego: Ego-Exo4D, 7,079 questions; exo: DynPose-100K, 1,000 questions.}
 
 \subsection{Sharing one model across viewpoints}
 \label{sec:egoexo}
-The second experiment asks whether one encoder can retain performance on both first- and third-person
-trajectories. This is challenging because the relationship between camera movement and activity changes across
-viewpoints, while the datasets also differ in pose source and sampling rate.
-
 We compare joint models without a domain embedding, U0, and with one, U1, against first-person and third-person
 specialists. A further control, E$\to$X, starts from the ego checkpoint but trains only on exo data.
 
@@ -417,9 +401,6 @@ difference is $-$2.50 points, with an interval of $-$5.69 to +0.58, and is also 
 
 \subsection{Adding eye gaze}
 \label{sec:gaze}
-Procedural actions can involve shifts in visual attention without corresponding head movement. The gaze experiment
-therefore asks whether eye direction contributes information beyond the camera trajectory.
-
 We test two approaches. In GF, the released trajectory encoder remains frozen and only the gaze projection learns.
 In GT, the complete model is fine-tuned. Each approach has a control receiving gaze from another moment or person,
 intended to distinguish useful action-specific information from the effect of adding another input.
@@ -460,11 +441,8 @@ noisy inputs, three noise draws.}
 
 \subsection{Sensitivity to position noise}
 \label{sec:noise}
-The final experiment examines whether recognising activities depends on precise camera positions. We first measure
-how accuracy changes when independent errors are added to each position. We then test whether training with those
-errors reduces the loss in performance.
-
-The augmented model receives Gaussian position noise with a standard deviation of 0.5\,cm per coordinate on half
+We measure how much accuracy drops when independent errors are added to each position, and whether training with
+such errors reduces the drop. The augmented model receives Gaussian position noise with a standard deviation of 0.5\,cm per coordinate on half
 its training clips. This strength was fixed before the runs, following measurements from 20 training recordings
 whose median frame-to-frame movement ranged from 0.21\,cm (a person standing at a kitchen counter) to 3.7\,cm
 (basketball). For scale, Aria's trajectories are reported to be within 1.5\,cm global error in room-scale scenes
