@@ -1,4 +1,4 @@
-# What a Camera's Path Knows: Stress-Testing a Pixel-Free Activity Model
+# What a Camera's Path Knows About Activity
 
 Juan Ignacio Arguello, Valerio Costa, Facundo Lucero
 
