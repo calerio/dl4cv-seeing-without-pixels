@@ -156,7 +156,7 @@ where the temperature $\tau=0.07$ controls the concentration of the scores used 
 \subsection{Learning from matching and mismatched pairs}
 \label{sec:loss}
 A training batch contains $N$ correct trajectory--caption pairs. Each trajectory is compared with the captions in
-the batch, and each caption is compared with the trajectories. The symmetric contrastive loss \cite{oord2018cpc}
+the batch, and each caption is compared with the trajectories. The InfoNCE loss \cite{oord2018cpc}, made symmetric as in CLIP \cite{radford2021clip},
 penalises both directions when an incorrect pair scores too highly:
 \begin{equation}
 \mathcal{L}_{\text{batch}} = -\frac{1}{2N}\sum_{i=1}^{N}\Big[\log\frac{e^{s_{ii}}}{\sum_{j\in\mathcal{N}_i}e^{s_{ij}}}
