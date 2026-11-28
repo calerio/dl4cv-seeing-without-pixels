@@ -1,0 +1,136 @@
+% A0 portrait poster template. Compile with LuaLaTeX, twice:
+%   lualatex poster.tex && lualatex poster.tex
+\documentclass{article}
+\usepackage[paperwidth=841mm,paperheight=1189mm,margin=4.5cm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Inter}
+\usepackage{xcolor,graphicx,tcolorbox,tikz}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+% ---- Colours (Bocconi palette) ----
+\definecolor{bblue}{HTML}{104BB4}
+\definecolor{lorange}{HTML}{F7A11F}
+\definecolor{lred}{HTML}{CF2027}
+\definecolor{lpaper}{HTML}{F6F1E6}
+\newfontfamily\display{BowlbyOne-Regular.ttf}[Path=fonts/]
+% Orange display text with the red offset shadow: \pop{size}{shadow}{text}
+\newcommand{\pop}[3]{\tikz[baseline=(t.base)]{\node[inner sep=0,text=lred,align=center] at (#2,-#2) {\display\fontsize{#1}{#1}\selectfont #3};
+  \node[inner sep=0,text=lorange,align=center] (t) {\display\fontsize{#1}{#1}\selectfont #3};}}
+\pagecolor{bblue}
+\definecolor{btint}{HTML}{E6EDF7}
+\definecolor{bink}{HTML}{111827}
+\definecolor{bslate}{HTML}{4B5563}
+\color{bink}
+
+% ---- Type sizes for A0 (body readable from ~2 m) ----
+\newcommand{\bodysize}{\fontsize{30}{40}\selectfont}
+\newcommand{\headsize}{\fontsize{44}{52}\selectfont}
+
+% ---- A content panel: \begin{panel}{Title} ... \end{panel} ----
+\newtcolorbox{panel}[1]{colback=white, colframe=white, boxrule=0pt, arc=8mm,
+  left=14mm, right=14mm, top=12mm, bottom=14mm,
+  title={\pop{40}{2.5pt}{\MakeUppercase{#1}}}, colbacktitle=bblue, toptitle=4mm, bottomtitle=4mm, before upper=\bodysize}
+
+% ---- Grey placeholder for a figure: \placeholder{height}{label} ----
+\newcommand{\placeholder}[2]{\tikz\node[draw=bslate, dashed, line width=2pt, fill=btint,
+  minimum width=\linewidth-4pt, minimum height=#1, align=center, text=bslate]{#2};}
+
+\begin{document}
+
+% =================== HEADER ===================
+\begin{minipage}[c]{0.17\linewidth}
+  % Drop the official logo here as bocconi-logo-white.pdf/png; a wordmark is used until then.
+  \IfFileExists{bocconi-logo-white.pdf}{\includegraphics[width=\linewidth]{bocconi-logo-white.pdf}}{%
+  \IfFileExists{bocconi-logo.png}{\includegraphics[width=\linewidth]{bocconi-logo.png}}{%
+    {\color{white}\fontsize{60}{60}\selectfont\bfseries Bocconi}\\[4mm]
+    {\color{white}\fontsize{22}{26}\selectfont Università Commerciale\\Luigi Bocconi}}}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.64\linewidth}\centering
+  \pop{100}{7pt}{WHAT A CAMERA'S PATH}\par\vspace{10mm}\pop{100}{7pt}{KNOWS ABOUT ACTIVITY}\par
+  \vspace{12mm}
+  {\color{white}\fontsize{36}{44}\selectfont Juan Ignacio Arguello \quad·\quad Valerio Costa \quad·\quad Facundo Lucero\par}
+  \vspace{6mm}
+  {\color{white}\fontsize{26}{32}\selectfont 20600 Deep Learning for Computer Vision · Bocconi University · Prof.~Chiara Plizzari\par}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.13\linewidth}\centering
+  \colorbox{white}{\includegraphics[width=0.9\linewidth]{repo-qr.png}}\\[3mm]
+  {\color{white}\fontsize{22}{26}\selectfont Code on GitHub}
+\end{minipage}
+
+\vspace{12mm}
+{\color{lorange}\rule{\linewidth}{6pt}}
+\vspace{10mm}
+
+% Hook line: the one sentence people read from across the room
+{\centering\color{white}\fontsize{52}{62}\selectfont\itshape Can a camera's motion alone tell what someone is doing?\par}
+\vspace{14mm}
+
+% =================== ROW 1 ===================
+\begin{minipage}[t]{0.48\linewidth}
+\begin{panel}{The problem}
+  [Two or three short lines: egocentric video, why poses only, what CamFormer does.]
+  \vspace{8mm}
+
+  \placeholder{15cm}{Picture of a camera trajectory}
+\end{panel}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\linewidth}
+\begin{panel}{Method}
+  \placeholder{19cm}{Pipeline figure:\\camera poses $\rightarrow$ CamFormer $\leftrightarrow$ text encoder}
+  \vspace{6mm}
+
+  [One line on the contrastive loss.]
+\end{panel}
+\end{minipage}
+
+\vspace{10mm}
+% =================== ROW 2 ===================
+\begin{panel}{Reproduction}
+  \placeholder{9cm}{Small table: paper vs ours (44.81 overall, 33.61 procedural)}
+\end{panel}
+
+\vspace{10mm}
+% =================== ROW 3: three extensions ===================
+\begin{minipage}[t]{0.315\linewidth}
+\begin{panel}{Hard negatives}
+  \placeholder{10cm}{Bar chart}\\[6mm]
+  [One-line takeaway.]
+\end{panel}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.315\linewidth}
+\begin{panel}{One ego+exo model}
+  \placeholder{10cm}{Bar chart}\\[6mm]
+  [One-line takeaway.]
+\end{panel}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.315\linewidth}
+\begin{panel}{Eye gaze}
+  \placeholder{10cm}{Bar chart}\\[6mm]
+  [One-line takeaway.]
+\end{panel}
+\end{minipage}
+
+\vspace{10mm}
+% =================== ROW 4 ===================
+\begin{minipage}[t]{0.48\linewidth}
+\begin{panel}{Takeaways}
+  \begin{itemize}\setlength{\itemsep}{6mm}
+    \item [Finding 1]
+    \item [Finding 2]
+    \item [Finding 3]
+  \end{itemize}
+\end{panel}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\linewidth}
+\begin{panel}{Where it works, where it fails}
+  \placeholder{11cm}{Two example clips with retrieved text}
+\end{panel}
+\end{minipage}
+
+\vfill
+{\centering\color{white}\fontsize{24}{30}\selectfont
+Based on \emph{Seeing without Pixels} (CamFormer). Data: Ego-Exo4D.\par}
+
+\end{document}

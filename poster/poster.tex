@@ -1,0 +1,127 @@
+% A0 portrait poster. Compile with LuaLaTeX, twice:
+%   lualatex poster.tex && lualatex poster.tex
+\documentclass{article}
+\usepackage[paperwidth=841mm,paperheight=1189mm,margin=9cm,top=8cm,bottom=8cm]{geometry}
+\usepackage{fontspec}
+\usepackage{xcolor,graphicx,tikz,enumitem}
+\usepackage[most]{tcolorbox}
+\usepackage{tikzflora}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+% ---- Fonts: Recoleta for display, Seravek for text ----
+\setmainfont{Seravek}[BoldFont={Seravek Medium}]
+\newfontfamily\display{Recoleta Medium}
+\newfontfamily\displaylight{Recoleta Light}
+
+% ---- Colours ----
+\definecolor{bblue}{HTML}{003DA5}
+\definecolor{bink}{HTML}{1F2937}
+\definecolor{bslate}{HTML}{5B6472}
+\definecolor{bpaper}{HTML}{FBF8F3}
+\definecolor{bline}{HTML}{D9DEE8}
+\definecolor{bfig}{HTML}{EEF2F8}
+\color{bink}
+
+% ---- Flowers: change layout / colourway / seed / density to play ----
+% layouts: surround, wreath, flank, split, left, right, title, bouquet, scrollwork
+% colourways: spring, summer, autumn, winter, ember, plum, rose, original
+\florasetup{layout=surround, colourway=winter, seed=20, density=1, visitors=1, gilt=vector}
+
+\newcommand{\bodysize}{\fontsize{31}{43}\selectfont}
+
+% ---- Panel: title in Recoleta on a soft card ----
+\newtcolorbox{panel}[2][]{enhanced, colback=bpaper, colframe=bline, boxrule=1.5pt, arc=10mm,
+  left=16mm, right=16mm, top=14mm, bottom=16mm, fontupper=\bodysize,
+  before upper={{\display\fontsize{50}{56}\selectfont\color{bblue}#2\par}\vspace{9mm}}, #1}
+
+% ---- Figure placeholder: \placeholder{height}{label} ----
+\newcommand{\placeholder}[2]{\tikz\node[draw=bblue!35, dashed, line width=2pt, fill=bfig, rounded corners=6mm,
+  minimum width=\linewidth-4pt, minimum height=#1, align=center, text=bslate,
+  font=\fontsize{28}{36}\selectfont]{#2};}
+
+% ---- Takeaway line: big numeral, then text ----
+\newcommand{\takeaway}[2]{\par\noindent\hangindent=24mm\hangafter=1%
+  \makebox[24mm][l]{\display\fontsize{46}{46}\selectfont\color{bblue}#1}#2\par\vspace{8mm}}
+
+\newcommand{\rowgap}{\vspace{11mm}}
+
+\begin{document}
+
+% =================== HEADER ===================
+\begin{minipage}[c]{0.78\linewidth}
+  {\display\color{bblue}\fontsize{118}{128}\selectfont What a Camera's Path\\Knows About Activity\par}
+  \vspace{14mm}
+  {\fontsize{42}{52}\selectfont Juan Ignacio Arguello \quad\textcolor{bline}{|}\quad Valerio Costa \quad\textcolor{bline}{|}\quad Facundo Lucero\par}
+  \vspace{5mm}
+  {\color{bslate}\fontsize{30}{38}\selectfont 20600 Deep Learning for Computer Vision \,·\, Bocconi University \,·\, Prof.~Chiara Plizzari\par}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.18\linewidth}\centering
+  \includegraphics[width=\linewidth]{bocconi-logo.pdf}\par
+  \vspace{12mm}
+  \includegraphics[width=0.72\linewidth]{repo-qr.png}\par
+  \vspace{3mm}
+  {\color{bslate}\fontsize{24}{28}\selectfont Code on GitHub\par}
+\end{minipage}
+
+\vspace{16mm}
+% Hook line
+\begin{tcolorbox}[enhanced, colback=bblue, colframe=bblue, arc=10mm, boxrule=0pt,
+  left=20mm, right=20mm, top=14mm, bottom=14mm, halign=center]
+  {\displaylight\spaceskip=0.26em plus 0.1em\color{white}\fontsize{62}{72}\selectfont Can a camera's motion alone tell what someone is doing?\par}
+\end{tcolorbox}
+\rowgap
+
+% =================== ROW 1 ===================
+\begin{tcbraster}[raster columns=2, raster equal height, raster column skip=11mm]
+\begin{panel}{The problem}
+  [Two or three short lines: egocentric video, why poses only, what CamFormer does.]
+  \par\vspace{8mm}\placeholder{14.5cm}{Camera trajectory of one clip}
+\end{panel}
+\begin{panel}{Method}
+  \placeholder{14.5cm}{Pipeline figure\\camera poses $\rightarrow$ CamFormer $\leftrightarrow$ text encoder}
+  \par\vspace{8mm}[One line on the contrastive loss.]
+\end{panel}
+\end{tcbraster}
+\rowgap
+
+% =================== ROW 2 ===================
+\begin{panel}{Reproducing the paper}
+  \placeholder{6.5cm}{Table: paper vs ours (44.81 overall, 33.61 procedural)}
+\end{panel}
+\rowgap
+
+% =================== ROW 3: three extensions ===================
+\begin{tcbraster}[raster columns=3, raster equal height, raster column skip=11mm]
+\begin{panel}{Hard negatives}
+  \placeholder{10cm}{Bar chart}\par\vspace{8mm}
+  [One-line takeaway.]
+\end{panel}
+\begin{panel}{One ego+exo model}
+  \placeholder{10cm}{Bar chart}\par\vspace{8mm}
+  [One-line takeaway.]
+\end{panel}
+\begin{panel}{Eye gaze}
+  \placeholder{10cm}{Bar chart}\par\vspace{8mm}
+  [One-line takeaway.]
+\end{panel}
+\end{tcbraster}
+\rowgap
+
+% =================== ROW 4 ===================
+\begin{tcbraster}[raster columns=2, raster equal height, raster column skip=11mm]
+\begin{panel}{Takeaways}
+  \takeaway{1}{[First finding, one line.]}
+  \takeaway{2}{[Second finding, one line.]}
+  \takeaway{3}{[Third finding, one line.]}
+\end{panel}
+\begin{panel}{Where it works, where it fails}
+  \placeholder{7.5cm}{Two example clips with retrieved text}
+\end{panel}
+\end{tcbraster}
+
+\vfill
+{\centering\color{bslate}\fontsize{24}{30}\selectfont
+Based on \emph{Seeing without Pixels} (CamFormer). Data: Ego-Exo4D.\par}
+
+\end{document}
