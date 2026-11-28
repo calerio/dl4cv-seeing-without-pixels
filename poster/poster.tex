@@ -1,19 +1,26 @@
-% A0 portrait poster template. Compile with LuaLaTeX, twice:
+% A0 portrait poster. Compile with LuaLaTeX, twice:
 %   lualatex poster.tex && lualatex poster.tex
 \documentclass{article}
-\usepackage[paperwidth=841mm,paperheight=1189mm,margin=9cm]{geometry}
+\usepackage[paperwidth=841mm,paperheight=1189mm,margin=9cm,top=8cm,bottom=8cm]{geometry}
 \usepackage{fontspec}
-\setmainfont{Inter}
-\usepackage{xcolor,graphicx,tcolorbox,tikz}
+\usepackage{xcolor,graphicx,tikz,enumitem}
+\usepackage[most]{tcolorbox}
 \usepackage{tikzflora}
 \pagestyle{empty}
 \setlength{\parindent}{0pt}
 
-% ---- Colours (Bocconi palette) ----
+% ---- Fonts: Recoleta for display, Seravek for text ----
+\setmainfont{Seravek}[BoldFont={Seravek Medium}]
+\newfontfamily\display{Recoleta Medium}
+\newfontfamily\displaylight{Recoleta Light}
+
+% ---- Colours ----
 \definecolor{bblue}{HTML}{003DA5}
-\definecolor{btint}{HTML}{E6EDF7}
-\definecolor{bink}{HTML}{111827}
-\definecolor{bslate}{HTML}{4B5563}
+\definecolor{bink}{HTML}{1F2937}
+\definecolor{bslate}{HTML}{5B6472}
+\definecolor{bpaper}{HTML}{FBF8F3}
+\definecolor{bline}{HTML}{D9DEE8}
+\definecolor{bfig}{HTML}{EEF2F8}
 \color{bink}
 
 % ---- Flowers: change layout / colourway / seed / density to play ----
@@ -21,111 +28,97 @@
 % colourways: spring, summer, autumn, winter, ember, plum, rose, original
 \florasetup{layout=surround, colourway=winter, seed=20, density=1, visitors=1, gilt=vector}
 
-% ---- Type sizes for A0 (body readable from ~2 m) ----
-\newcommand{\bodysize}{\fontsize{30}{40}\selectfont}
-\newcommand{\headsize}{\fontsize{44}{52}\selectfont}
+\newcommand{\bodysize}{\fontsize{31}{43}\selectfont}
 
-% ---- A content panel: \begin{panel}{Title} ... \end{panel} ----
-\newtcolorbox{panel}[1]{colback=white, colframe=bblue, boxrule=3pt, arc=8mm,
-  left=14mm, right=14mm, top=12mm, bottom=14mm,
-  title={\headsize\bfseries #1}, coltitle=white, colbacktitle=bblue,
-  fonttitle=\headsize, before upper=\bodysize}
+% ---- Panel: title in Recoleta on a soft card ----
+\newtcolorbox{panel}[2][]{enhanced, colback=bpaper, colframe=bline, boxrule=1.5pt, arc=10mm,
+  left=16mm, right=16mm, top=14mm, bottom=16mm, fontupper=\bodysize,
+  before upper={{\display\fontsize{50}{56}\selectfont\color{bblue}#2\par}\vspace{9mm}}, #1}
 
-% ---- Grey placeholder for a figure: \placeholder{height}{label} ----
-\newcommand{\placeholder}[2]{\tikz\node[draw=bslate, dashed, line width=2pt, fill=btint,
-  minimum width=\linewidth-4pt, minimum height=#1, align=center, text=bslate]{#2};}
+% ---- Figure placeholder: \placeholder{height}{label} ----
+\newcommand{\placeholder}[2]{\tikz\node[draw=bblue!35, dashed, line width=2pt, fill=bfig, rounded corners=6mm,
+  minimum width=\linewidth-4pt, minimum height=#1, align=center, text=bslate,
+  font=\fontsize{28}{36}\selectfont]{#2};}
+
+% ---- Takeaway line: big numeral, then text ----
+\newcommand{\takeaway}[2]{\par\noindent\hangindent=24mm\hangafter=1%
+  \makebox[24mm][l]{\display\fontsize{46}{46}\selectfont\color{bblue}#1}#2\par\vspace{8mm}}
+
+\newcommand{\rowgap}{\vspace{11mm}}
 
 \begin{document}
 
 % =================== HEADER ===================
-\begin{minipage}[c]{0.17\linewidth}
-  % Drop the official logo here as bocconi-logo.pdf/png; a wordmark is used until then.
-  \IfFileExists{bocconi-logo.pdf}{\includegraphics[width=\linewidth]{bocconi-logo.pdf}}{%
-  \IfFileExists{bocconi-logo.png}{\includegraphics[width=\linewidth]{bocconi-logo.png}}{%
-    {\color{bblue}\fontsize{60}{60}\selectfont\bfseries Bocconi}\\[4mm]
-    {\color{bslate}\fontsize{22}{26}\selectfont Università Commerciale\\Luigi Bocconi}}}
+\begin{minipage}[c]{0.78\linewidth}
+  {\display\color{bblue}\fontsize{118}{128}\selectfont What a Camera's Path\\Knows About Activity\par}
+  \vspace{14mm}
+  {\fontsize{42}{52}\selectfont Juan Ignacio Arguello \quad\textcolor{bline}{|}\quad Valerio Costa \quad\textcolor{bline}{|}\quad Facundo Lucero\par}
+  \vspace{5mm}
+  {\color{bslate}\fontsize{30}{38}\selectfont 20600 Deep Learning for Computer Vision \,·\, Bocconi University \,·\, Prof.~Chiara Plizzari\par}
 \end{minipage}\hfill
-\begin{minipage}[c]{0.64\linewidth}\centering
-  {\color{bblue}\fontsize{92}{104}\selectfont\bfseries What a Camera's Path\\Knows About Activity\par}
+\begin{minipage}[c]{0.18\linewidth}\centering
+  \includegraphics[width=\linewidth]{bocconi-logo.pdf}\par
   \vspace{12mm}
-  {\fontsize{36}{44}\selectfont Juan Ignacio Arguello \quad·\quad Valerio Costa \quad·\quad Facundo Lucero\par}
-  \vspace{6mm}
-  {\color{bslate}\fontsize{26}{32}\selectfont 20600 Deep Learning for Computer Vision · Bocconi University · Prof.~Chiara Plizzari\par}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.13\linewidth}\centering
-  \includegraphics[width=\linewidth]{repo-qr.png}\\[3mm]
-  {\color{bslate}\fontsize{22}{26}\selectfont Code on GitHub}
+  \includegraphics[width=0.72\linewidth]{repo-qr.png}\par
+  \vspace{3mm}
+  {\color{bslate}\fontsize{24}{28}\selectfont Code on GitHub\par}
 \end{minipage}
 
-\vspace{12mm}
-{\color{bblue}\rule{\linewidth}{4pt}}
-\vspace{10mm}
-
-% Hook line: the one sentence people read from across the room
-{\centering\fontsize{52}{62}\selectfont\itshape Can a camera's motion alone tell what someone is doing?\par}
-\vspace{14mm}
+\vspace{16mm}
+% Hook line
+\begin{tcolorbox}[enhanced, colback=bblue, colframe=bblue, arc=10mm, boxrule=0pt,
+  left=20mm, right=20mm, top=14mm, bottom=14mm, halign=center]
+  {\displaylight\spaceskip=0.26em plus 0.1em\color{white}\fontsize{62}{72}\selectfont Can a camera's motion alone tell what someone is doing?\par}
+\end{tcolorbox}
+\rowgap
 
 % =================== ROW 1 ===================
-\begin{minipage}[t]{0.48\linewidth}
+\begin{tcbraster}[raster columns=2, raster equal height, raster column skip=11mm]
 \begin{panel}{The problem}
   [Two or three short lines: egocentric video, why poses only, what CamFormer does.]
-  \vspace{8mm}
-
-  \placeholder{15cm}{Picture of a camera trajectory}
+  \par\vspace{8mm}\placeholder{14.5cm}{Camera trajectory of one clip}
 \end{panel}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.48\linewidth}
 \begin{panel}{Method}
-  \placeholder{19cm}{Pipeline figure:\\camera poses $\rightarrow$ CamFormer $\leftrightarrow$ text encoder}
-  \vspace{6mm}
-
-  [One line on the contrastive loss.]
+  \placeholder{14.5cm}{Pipeline figure\\camera poses $\rightarrow$ CamFormer $\leftrightarrow$ text encoder}
+  \par\vspace{8mm}[One line on the contrastive loss.]
 \end{panel}
-\end{minipage}
+\end{tcbraster}
+\rowgap
 
-\vspace{10mm}
 % =================== ROW 2 ===================
-\begin{panel}{Reproduction}
-  \placeholder{9cm}{Small table: paper vs ours (44.81 overall, 33.61 procedural)}
+\begin{panel}{Reproducing the paper}
+  \placeholder{6.5cm}{Table: paper vs ours (44.81 overall, 33.61 procedural)}
 \end{panel}
+\rowgap
 
-\vspace{10mm}
 % =================== ROW 3: three extensions ===================
-\begin{minipage}[t]{0.315\linewidth}
+\begin{tcbraster}[raster columns=3, raster equal height, raster column skip=11mm]
 \begin{panel}{Hard negatives}
-  \placeholder{10cm}{Bar chart}\\[6mm]
+  \placeholder{10cm}{Bar chart}\par\vspace{8mm}
   [One-line takeaway.]
 \end{panel}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.315\linewidth}
 \begin{panel}{One ego+exo model}
-  \placeholder{10cm}{Bar chart}\\[6mm]
+  \placeholder{10cm}{Bar chart}\par\vspace{8mm}
   [One-line takeaway.]
 \end{panel}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.315\linewidth}
 \begin{panel}{Eye gaze}
-  \placeholder{10cm}{Bar chart}\\[6mm]
+  \placeholder{10cm}{Bar chart}\par\vspace{8mm}
   [One-line takeaway.]
 \end{panel}
-\end{minipage}
+\end{tcbraster}
+\rowgap
 
-\vspace{10mm}
 % =================== ROW 4 ===================
-\begin{minipage}[t]{0.48\linewidth}
+\begin{tcbraster}[raster columns=2, raster equal height, raster column skip=11mm]
 \begin{panel}{Takeaways}
-  \begin{itemize}\setlength{\itemsep}{6mm}
-    \item [Finding 1]
-    \item [Finding 2]
-    \item [Finding 3]
-  \end{itemize}
+  \takeaway{1}{[First finding, one line.]}
+  \takeaway{2}{[Second finding, one line.]}
+  \takeaway{3}{[Third finding, one line.]}
 \end{panel}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.48\linewidth}
 \begin{panel}{Where it works, where it fails}
-  \placeholder{11cm}{Two example clips with retrieved text}
+  \placeholder{7.5cm}{Two example clips with retrieved text}
 \end{panel}
-\end{minipage}
+\end{tcbraster}
 
 \vfill
 {\centering\color{bslate}\fontsize{24}{30}\selectfont
